@@ -4,11 +4,15 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from . import bp
 from .forms import PrototipoForm, FraccionamientoForm, PaqueteForm, LoteForm, LoteBulkUploadForm, LoteFilterForm
-from .models import Prototipo, PrototipoImagen, Fraccionamiento, Paquete, Lote
+from .models import Prototipo, PrototipoImagen, Fraccionamiento, Paquete, Lote, LoteAsignacion
+from app.clients.models import Client
 from app.database import db
 from app.auth.decorators import admin_required
+from app.auth.models import UserRole
 import csv
 import io
+import traceback
+from datetime import datetime
 
 def allowed_file(filename):
     if not filename:
@@ -61,13 +65,13 @@ def handle_image_upload(file, prototipo_id):
             os.remove(filepath)  # Clean up file if database operation fails
         raise IOError(f"Error al procesar archivo {file.filename}: {str(e)}")
 
-@bp.route('/prototipos')
+@bp.route('/properties/prototipos')
 @login_required
 def prototipos_index():
     prototipos = Prototipo.query.order_by(Prototipo.nombre_prototipo).all()
     return render_template('properties/prototipos/index.html', prototipos=prototipos)
 
-@bp.route('/prototipos/nuevo', methods=['GET', 'POST'])
+@bp.route('/properties/prototipos/nuevo', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def prototipo_nuevo():
@@ -127,7 +131,7 @@ def prototipo_nuevo():
     
     return render_template('properties/prototipos/form.html', form=form, title='Nuevo Prototipo')
 
-@bp.route('/prototipos/<int:id>/editar', methods=['GET', 'POST'])
+@bp.route('/properties/prototipos/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def prototipo_editar(id):
@@ -194,7 +198,7 @@ def prototipo_editar(id):
                          imagenes=imagenes,
                          title='Editar Prototipo')
 
-@bp.route('/prototipos/<int:id>/eliminar', methods=['POST'])
+@bp.route('/properties/prototipos/<int:id>/eliminar', methods=['POST'])
 @login_required
 @admin_required
 def prototipo_eliminar(id):
@@ -214,7 +218,7 @@ def prototipo_eliminar(id):
     flash('Prototipo eliminado exitosamente.', 'success')
     return redirect(url_for('properties.prototipos_index'))
 
-@bp.route('/prototipos/imagen/<int:id>/eliminar', methods=['POST'])
+@bp.route('/properties/prototipos/imagen/<int:id>/eliminar', methods=['POST'])
 @login_required
 @admin_required
 def prototipo_imagen_eliminar(id):
@@ -243,13 +247,13 @@ def prototipo_imagen_eliminar(id):
     return redirect(url_for('properties.prototipo_editar', id=prototipo_id))
 
 # Fraccionamiento routes
-@bp.route('/fraccionamientos')
+@bp.route('/properties/fraccionamientos')
 @login_required
 def fraccionamientos_index():
     fraccionamientos = Fraccionamiento.query.all()
     return render_template('properties/fraccionamientos/index.html', fraccionamientos=fraccionamientos)
 
-@bp.route('/fraccionamientos/new', methods=['GET', 'POST'])
+@bp.route('/properties/fraccionamientos/new', methods=['GET', 'POST'])
 @login_required
 def fraccionamiento_new():
     form = FraccionamientoForm()
@@ -279,7 +283,7 @@ def fraccionamiento_new():
         return redirect(url_for('properties.fraccionamientos_index'))
     return render_template('properties/fraccionamientos/form.html', form=form)
 
-@bp.route('/fraccionamientos/<int:id>/edit', methods=['GET', 'POST'])
+@bp.route('/properties/fraccionamientos/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 def fraccionamiento_edit(id):
     fraccionamiento = Fraccionamiento.query.get_or_404(id)
@@ -316,7 +320,7 @@ def fraccionamiento_edit(id):
                          form=form, 
                          fraccionamiento=fraccionamiento)
 
-@bp.route('/fraccionamientos/<int:id>/delete', methods=['POST'])
+@bp.route('/properties/fraccionamientos/<int:id>/delete', methods=['POST'])
 @login_required
 def fraccionamiento_delete(id):
     fraccionamiento = Fraccionamiento.query.get_or_404(id)
@@ -333,7 +337,7 @@ def fraccionamiento_delete(id):
     return redirect(url_for('properties.fraccionamientos_index'))
 
 # Paquete routes
-@bp.route('/fraccionamientos/<int:fraccionamiento_id>/paquetes')
+@bp.route('/properties/fraccionamientos/<int:fraccionamiento_id>/paquetes')
 @login_required
 def paquetes_index(fraccionamiento_id):
     fraccionamiento = Fraccionamiento.query.get_or_404(fraccionamiento_id)
@@ -341,7 +345,7 @@ def paquetes_index(fraccionamiento_id):
                          fraccionamiento=fraccionamiento,
                          paquetes=fraccionamiento.paquetes)
 
-@bp.route('/fraccionamientos/<int:fraccionamiento_id>/paquetes/new', methods=['GET', 'POST'])
+@bp.route('/properties/fraccionamientos/<int:fraccionamiento_id>/paquetes/new', methods=['GET', 'POST'])
 @login_required
 def paquete_new(fraccionamiento_id):
     fraccionamiento = Fraccionamiento.query.get_or_404(fraccionamiento_id)
@@ -362,7 +366,7 @@ def paquete_new(fraccionamiento_id):
                          fraccionamiento=fraccionamiento)
 
 # Lote routes
-@bp.route('/paquetes/<int:paquete_id>/lotes')
+@bp.route('/properties/paquetes/<int:paquete_id>/lotes')
 @login_required
 def lotes_index(paquete_id):
     paquete = Paquete.query.get_or_404(paquete_id)
@@ -370,7 +374,7 @@ def lotes_index(paquete_id):
                          paquete=paquete,
                          lotes=paquete.lotes)
 
-@bp.route('/paquetes/<int:paquete_id>/lotes/new', methods=['GET', 'POST'])
+@bp.route('/properties/paquetes/<int:paquete_id>/lotes/new', methods=['GET', 'POST'])
 @login_required
 def lote_new(paquete_id):
     paquete = Paquete.query.get_or_404(paquete_id)
@@ -419,7 +423,7 @@ def lote_new(paquete_id):
                          form=form, 
                          paquete=paquete)
 
-@bp.route('/lotes/<int:lote_id>/edit', methods=['GET', 'POST'])
+@bp.route('/properties/lotes/<int:lote_id>/edit', methods=['GET', 'POST'])
 @login_required
 def lote_edit(lote_id):
     lote = Lote.query.get_or_404(lote_id)
@@ -481,7 +485,7 @@ def lote_edit(lote_id):
                          paquete=lote.paquete,
                          is_edit=True)
 
-@bp.route('/paquetes/<int:paquete_id>/lotes/bulk-upload', methods=['GET', 'POST'])
+@bp.route('/properties/paquetes/<int:paquete_id>/lotes/bulk-upload', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def lotes_bulk_upload(paquete_id):
@@ -563,7 +567,202 @@ def lotes_bulk_upload(paquete_id):
                          form=form, 
                          paquete=paquete)
 
-@bp.route('/lotes/public', methods=['GET'])
+@bp.route('/api/lotes/<int:lote_id>/details', methods=['GET'])
+@login_required
+def get_lote_details(lote_id):
+    """Get detailed information about a lot"""
+    try:
+        current_app.logger.info(f"Fetching details for lot {lote_id}")
+        lote = Lote.query.get_or_404(lote_id)
+        
+        # Get current assignment if any
+        current_assignment = None
+        if lote.estado_del_inmueble == 'Apartado':
+            current_assignment = (
+                LoteAsignacion.query
+                .filter_by(lote_id=lote_id, fecha_fin=None)
+                .first()
+            )
+        
+        # Build response data
+        data = {
+            'id': lote.id,
+            'numero_lote': lote.lote,
+            'manzana': lote.manzana,
+            'superficie': lote.terreno,
+            'precio': float(lote.precio) if lote.precio else 0,
+            'estado': lote.estado_del_inmueble,
+            'tipo': lote.tipo_de_lote,
+            'prototipo': {
+                'nombre': lote.prototipo.nombre_prototipo,
+                'superficie': lote.prototipo.superficie_construccion
+            } if lote.prototipo else None,
+            'cliente': None
+        }
+        
+        # Add client information if assigned
+        if current_assignment and current_assignment.client:
+            client = current_assignment.client
+            data['cliente'] = {
+                'nombre_completo': client.nombre_completo,
+                'telefono': client.telefono,
+                'email': client.email
+            }
+        
+        current_app.logger.info(f"Successfully retrieved lot details: {data}")
+        response = jsonify(data)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting lot details: {str(e)}")
+        error_response = jsonify({'error': 'Error al obtener detalles del lote'})
+        error_response.headers['Content-Type'] = 'application/json'
+        return error_response, 500
+
+@bp.route('/properties/api/clients/assignable')
+@login_required
+def get_assignable_clients():
+    """Get list of clients that can be assigned lots by the current user"""
+    try:
+        clients = current_user.get_assignable_clients()
+        return jsonify([{
+            'id': client.id,
+            'nombre_completo': client.nombre_completo,
+            'celular': client.celular or 'Sin teléfono'
+        } for client in clients])
+    except Exception as e:
+        current_app.logger.error(f"Error in get_assignable_clients: {str(e)}")
+        return jsonify({'error': 'Error al cargar la lista de clientes'}), 500
+
+@bp.route('/properties/api/lotes/<int:lote_id>/assign', methods=['POST'])
+@login_required
+def assign_lot(lote_id):
+    """Assign a lot to a client"""
+    try:
+        current_app.logger.info(f"Starting lot assignment for lote_id: {lote_id}")
+        data = request.get_json()
+        current_app.logger.debug(f"Received data: {data}")
+        
+        client_id = data.get('client_id')
+        notas = data.get('notas', '')
+
+        if not client_id:
+            current_app.logger.warning("No client_id provided in request")
+            return jsonify({'error': 'Se requiere un cliente'}), 400
+
+        # Get the lot and verify it exists
+        lote = Lote.query.get_or_404(lote_id)
+        current_app.logger.info(f"Found lot: {lote.id}, current status: {lote.estado_del_inmueble}")
+
+        # Verify lot is available
+        if lote.estado_del_inmueble != 'Libre':
+            current_app.logger.warning(f"Lot {lote_id} is not available. Current status: {lote.estado_del_inmueble}")
+            return jsonify({'error': 'El lote no está disponible'}), 400
+
+        # Get the client and verify they exist
+        client = Client.query.get_or_404(client_id)
+        current_app.logger.info(f"Found client: {client.id}")
+
+        try:
+            # Start database transaction
+            db.session.begin_nested()
+
+            # Create new assignment using only the existing columns
+            assignment = LoteAsignacion(
+                lote_id=lote_id,
+                client_id=client_id,
+                user_id=current_user.id,
+                notas=notas
+            )
+            current_app.logger.info(f"Created assignment object for lot {lote_id} and client {client_id}")
+
+            # Update lot status
+            lote.estado_del_inmueble = 'Apartado'
+            current_app.logger.info(f"Updated lot status to Apartado")
+
+            # Save changes
+            db.session.add(assignment)
+            db.session.commit()
+            current_app.logger.info(f"Successfully saved assignment to database")
+
+            return jsonify({
+                'message': 'Lote apartado exitosamente',
+                'lote_id': lote_id,
+                'client_id': client_id,
+                'estado': 'Apartado'
+            })
+
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Database error during assignment: {str(e)}\n{traceback.format_exc()}")
+            return jsonify({'error': f'Error en la base de datos: {str(e)}'}), 500
+
+    except Exception as e:
+        current_app.logger.error(f"Error in assign_lot: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'error': f'Error al apartar el lote: {str(e)}'}), 500
+
+@bp.route('/properties/api/lotes/<int:lote_id>/history')
+@login_required
+def get_lot_history(lote_id):
+    """Get assignment history for a lot"""
+    lote = Lote.query.get_or_404(lote_id)
+    
+    # Check if user can view this lot
+    if not current_user.has_role(UserRole.ADMIN) and not current_user.has_role(UserRole.GERENTE):
+        # Add any additional access control if needed
+        pass
+    
+    # Get all historical records
+    history = LoteAsignacionHistorial.query.filter_by(lote_id=lote_id)\
+        .order_by(LoteAsignacionHistorial.fecha_inicio.desc()).all()
+    
+    return jsonify([{
+        'fecha_inicio': record.fecha_inicio.isoformat(),
+        'fecha_fin': record.fecha_fin.isoformat(),
+        'client_name': f"{record.client.nombre} {record.client.apellido_paterno}",
+        'estado': record.estado,
+        'user_name': record.user.nombre_completo,
+        'motivo_cambio': record.motivo_cambio
+    } for record in history])
+
+@bp.route('/properties/api/lotes/<int:lote_id>/release', methods=['POST'])
+@login_required
+def release_lot(lote_id):
+    """Release a lot back to available status"""
+    data = request.get_json()
+    
+    if 'motivo' not in data:
+        return jsonify({'error': 'Se requiere especificar el motivo'}), 400
+    
+    lote = Lote.query.get_or_404(lote_id)
+    
+    # Check if user can modify this assignment
+    if not current_user.can_modify_lot_assignment(lote.asignacion):
+        return jsonify({'error': 'No tiene permiso para liberar este lote'}), 403
+    
+    try:
+        historial = lote.liberar_lote(
+            user=current_user,
+            motivo=data['motivo'],
+            notas=data.get('notas')
+        )
+        
+        db.session.add(historial)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Lote liberado exitosamente',
+            'lote_id': lote.id
+        })
+        
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Error al liberar el lote'}), 500
+
+@bp.route('/properties/lotes/public', methods=['GET'])
 def lotes_public():
     form = LoteFilterForm(request.args, meta={'csrf': False})
     lotes = []
@@ -600,152 +799,3 @@ def lotes_public():
         ).all()
     
     return render_template('properties/lotes/public.html', form=form, lotes=lotes)
-
-@bp.route('/api/clients/assignable')
-@login_required
-def get_assignable_clients():
-    """Get list of clients that can be assigned lots by the current user"""
-    clients = current_user.get_assignable_clients()
-    return jsonify([{
-        'id': client.id,
-        'nombre_completo': f"{client.nombre} {client.apellido_paterno} {client.apellido_materno}",
-        'celular': client.celular
-    } for client in clients])
-
-@bp.route('/api/lotes/<int:lote_id>')
-@login_required
-def get_lote_details(lote_id):
-    """Get detailed information about a lot"""
-    lote = Lote.query.get_or_404(lote_id)
-    
-    # Check if user can view this lot
-    if not current_user.has_role(UserRole.ADMIN) and not current_user.has_role(UserRole.GERENTE):
-        # Add any additional access control if needed
-        pass
-    
-    # Get current assignment if any
-    asignacion = None
-    if hasattr(lote, 'asignacion') and lote.asignacion:
-        asignacion = {
-            'client_name': f"{lote.asignacion.client.nombre} {lote.asignacion.client.apellido_paterno}",
-            'fecha_asignacion': lote.asignacion.fecha_asignacion.isoformat(),
-            'estado': lote.asignacion.estado
-        }
-    
-    # Get the first image of the prototype
-    prototipo_imagen = None
-    if lote.prototipo.imagenes:
-        primera_imagen = lote.prototipo.imagenes[0]
-        prototipo_imagen = url_for('static', filename=f'uploads/prototipos/{primera_imagen.filename}')
-    
-    return jsonify({
-        'id': lote.id,
-        'lote': lote.lote,
-        'manzana': lote.manzana,
-        'precio': float(lote.precio),
-        'estado_del_inmueble': lote.estado_del_inmueble,
-        'can_assign': current_user.has_role(UserRole.ADMIN) or \
-                     current_user.has_role(UserRole.GERENTE) or \
-                     current_user.has_role(UserRole.LIDER) or \
-                     current_user.has_role(UserRole.VENDEDOR),
-        'prototipo': {
-            'nombre_prototipo': lote.prototipo.nombre_prototipo,
-            'superficie_construccion': lote.prototipo.superficie_construccion,
-            'imagen_url': prototipo_imagen
-        },
-        'asignacion': asignacion
-    })
-
-@bp.route('/api/lotes/assign', methods=['POST'])
-@login_required
-def assign_lot():
-    """Assign a lot to a client"""
-    data = request.get_json()
-    
-    if not all(k in data for k in ('lote_id', 'client_id')):
-        return jsonify({'error': 'Missing required fields'}), 400
-    
-    lote = Lote.query.get_or_404(data['lote_id'])
-    client = Client.query.get_or_404(data['client_id'])
-    
-    # Check permissions
-    if not current_user.can_assign_lot(client, lote):
-        return jsonify({'error': 'No tiene permiso para asignar este lote'}), 403
-    
-    try:
-        # Create assignment
-        asignacion = lote.asignar_a_cliente(
-            client=client,
-            user=current_user,
-            notas=data.get('notas')
-        )
-        
-        db.session.add(asignacion)
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Lote asignado exitosamente',
-            'lote_id': lote.id,
-            'client_id': client.id
-        })
-        
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Error al asignar el lote'}), 500
-
-@bp.route('/api/lotes/<int:lote_id>/history')
-@login_required
-def get_lot_history(lote_id):
-    """Get assignment history for a lot"""
-    lote = Lote.query.get_or_404(lote_id)
-    
-    # Get all historical records
-    history = LoteAsignacionHistorial.query.filter_by(lote_id=lote_id)\
-        .order_by(LoteAsignacionHistorial.fecha_inicio.desc()).all()
-    
-    return jsonify([{
-        'fecha_inicio': record.fecha_inicio.isoformat(),
-        'fecha_fin': record.fecha_fin.isoformat(),
-        'client_name': f"{record.client.nombre} {record.client.apellido_paterno}",
-        'estado': record.estado,
-        'user_name': record.user.nombre_completo,
-        'motivo_cambio': record.motivo_cambio
-    } for record in history])
-
-@bp.route('/api/lotes/<int:lote_id>/release', methods=['POST'])
-@login_required
-def release_lot(lote_id):
-    """Release a lot back to available status"""
-    data = request.get_json()
-    
-    if 'motivo' not in data:
-        return jsonify({'error': 'Se requiere especificar el motivo'}), 400
-    
-    lote = Lote.query.get_or_404(lote_id)
-    
-    # Check if user can modify this assignment
-    if not current_user.can_modify_lot_assignment(lote.asignacion):
-        return jsonify({'error': 'No tiene permiso para liberar este lote'}), 403
-    
-    try:
-        historial = lote.liberar_lote(
-            user=current_user,
-            motivo=data['motivo'],
-            notas=data.get('notas')
-        )
-        
-        db.session.add(historial)
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Lote liberado exitosamente',
-            'lote_id': lote.id
-        })
-        
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Error al liberar el lote'}), 500
