@@ -1,16 +1,17 @@
-from flask import render_template, redirect, url_for, flash, request, abort
+from flask import render_template, redirect, url_for, flash, request, abort, current_app, send_from_directory, jsonify
 from flask_login import login_required, current_user
 from app.clients import bp
-from app.clients.models import Client, Document
+from app.clients.models import Client, Document, ESTATUS_CHOICES
 from app.clients.forms import ClientForm, ClientSearchForm
-from app.core.database import db
+from app import db
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import os
 from werkzeug.utils import secure_filename
-from flask import current_app, send_from_directory, jsonify
-from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from app.auth.models import UserRole, User
+import sys
+import traceback
 
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'}
 
@@ -67,42 +68,103 @@ def new():
     form = ClientForm()
     if form.validate_on_submit():
         try:
-            client = Client()
-            # Handle empty email specifically
-            if not form.email.data:
-                form.email.data = None
+            # Validate required fields manually
+            required_fields = ['nombre', 'apellido_paterno', 'apellido_materno', 'celular', 'assigned_user_id']
+            for field_name in required_fields:
+                field_value = getattr(form, field_name).data
+                if not field_value:
+                    flash(f'El campo {field_name} es requerido.', 'error')
+                    return render_template('clients/form.html', form=form, client=None, title='Nuevo Cliente')
+
+            # Print form data for debugging
+            print("\nForm data:")
+            for field in form:
+                if field.name != 'csrf_token':
+                    print(f"{field.name}: {field.data}")
             
-            # Populate the client object with form data
-            form.populate_obj(client)
+            # Create new client with required fields
+            client = Client(
+                nombre=form.nombre.data.strip(),
+                apellido_paterno=form.apellido_paterno.data.strip(),
+                apellido_materno=form.apellido_materno.data.strip(),
+                celular=form.celular.data.strip(),
+                assigned_user_id=form.assigned_user_id.data,
+                estatus='activo',
+                fecha_registro=datetime.utcnow()
+            )
             
-            # Set the assigned user
-            client.assigned_user_id = current_user.id
+            # Handle optional fields
+            optional_fields = {
+                'email': form.email.data,
+                'fecha_nacimiento': form.fecha_nacimiento.data,
+                'sexo': form.sexo.data,
+                'estado_civil': form.estado_civil.data,
+                'nacionalidad': form.nacionalidad.data,
+                'tipo_de_credito': form.tipo_de_credito.data,
+                'banco': form.banco.data
+            }
             
-            # Ensure required fields are set
-            client.estatus = 'activo'  # Set default status
+            for field_name, value in optional_fields.items():
+                if value:
+                    setattr(client, field_name, value.strip() if isinstance(value, str) else value)
             
-            print(f"Creating new client: {client.nombre} {client.apellido_paterno}")
-            print(f"Status: {client.estatus}")
-            print(f"Celular: {client.celular}")
-            print(f"Assigned to: {client.assigned_user_id}")
+            print("\nClient object before save:")
+            print(f"nombre: {client.nombre}")
+            print(f"apellido_paterno: {client.apellido_paterno}")
+            print(f"apellido_materno: {client.apellido_materno}")
+            print(f"celular: {client.celular}")
+            print(f"assigned_user_id: {client.assigned_user_id}")
+            print(f"estatus: {client.estatus}")
+            print(f"fecha_registro: {client.fecha_registro}")
             
-            db.session.add(client)
-            db.session.commit()
+            # Verify user exists
+            assigned_user = User.query.get(client.assigned_user_id)
+            if not assigned_user:
+                flash('El usuario asignado no existe.', 'error')
+                return render_template('clients/form.html', form=form, client=None, title='Nuevo Cliente')
             
-            print(f"Client created successfully with ID: {client.id}")
+            try:
+                db.session.add(client)
+                db.session.flush()  # Try to flush changes to detect any database errors
+                print("\nClient added to session successfully")
+            except Exception as e:
+                print(f"\nError during session.add or flush: {str(e)}")
+                raise
+                
+            try:
+                db.session.commit()
+                print("\nCommit successful")
+            except Exception as e:
+                print(f"\nError during commit: {str(e)}")
+                raise
+            
+            print(f"\nClient created successfully with ID: {client.id}")
             flash('Cliente creado exitosamente.', 'success')
             return redirect(url_for('clients.view', id=client.id))
             
         except IntegrityError as e:
             db.session.rollback()
-            print(f"IntegrityError creating client: {str(e)}")
-            flash('Error al crear el cliente. El email ya existe.', 'error')
+            print(f"\nIntegrityError creating client: {str(e)}")
+            if "UNIQUE constraint failed: client.email" in str(e):
+                flash('Error al crear el cliente. El email ya existe.', 'error')
+            else:
+                flash('Error de integridad en la base de datos. Por favor revise los datos.', 'error')
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            print(f"\nSQLAlchemyError creating client:")
+            print(f"Error type: {type(e)}")
+            print(f"Error message: {str(e)}")
+            print(f"Error args: {e.args}")
+            flash('Error en la base de datos. Por favor intente nuevamente.', 'error')
         except Exception as e:
             db.session.rollback()
-            print(f"Error creating client: {str(e)}")
-            flash('Error al crear el cliente. Por favor intente nuevamente.', 'error')
+            print(f"\nUnexpected error creating client:")
+            print(f"Error type: {type(e)}")
+            print(f"Error message: {str(e)}")
+            traceback.print_exc()
+            flash('Error inesperado al crear el cliente. Por favor intente nuevamente.', 'error')
     else:
-        print("Form validation errors:", form.errors)
+        print("\nForm validation errors:", form.errors)
         for field, errors in form.errors.items():
             for error in errors:
                 flash(f'Error en {field}: {error}', 'error')
@@ -131,6 +193,10 @@ def edit(id):
         except IntegrityError:
             db.session.rollback()
             flash('Error al actualizar el cliente. El email ya existe.', 'error')
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            print(f"SQLAlchemyError updating client: {str(e)}")
+            flash('Error al actualizar el cliente. Por favor intente nuevamente.', 'error')
     return render_template('clients/form.html', form=form, client=client, title='Editar Cliente')
 
 @bp.route('/view/<int:id>')
@@ -159,8 +225,13 @@ def delete(id):
         abort(403)
     
     db.session.delete(client)
-    db.session.commit()
-    flash('Cliente eliminado exitosamente.', 'success')
+    try:
+        db.session.commit()
+        flash('Cliente eliminado exitosamente.', 'success')
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"SQLAlchemyError deleting client: {str(e)}")
+        flash('Error al eliminar el cliente. Por favor intente nuevamente.', 'error')
     return redirect(url_for('clients.index'))
 
 @bp.route('/upload_document/<int:client_id>', methods=['POST'])
@@ -207,17 +278,21 @@ def upload_document(client_id):
                 client_id=client_id
             )
             db.session.add(document)
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'document': {
-                    'id': document.id,
-                    'name': document.name,
-                    'filename': document.filename,
-                    'upload_date': document.upload_date.strftime('%Y-%m-%d %H:%M:%S')
-                }
-            })
+            try:
+                db.session.commit()
+                return jsonify({
+                    'success': True,
+                    'document': {
+                        'id': document.id,
+                        'name': document.name,
+                        'filename': document.filename,
+                        'upload_date': document.upload_date.strftime('%Y-%m-%d %H:%M:%S')
+                    }
+                })
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                print(f"SQLAlchemyError creating document: {str(e)}")
+                return jsonify({'error': 'Error al subir el documento'}), 500
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f'Error uploading document: {str(e)}')
@@ -247,9 +322,13 @@ def delete_document(document_id):
     
     # Delete record
     db.session.delete(document)
-    db.session.commit()
-    
-    return jsonify({'success': True})
+    try:
+        db.session.commit()
+        return jsonify({'success': True})
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"SQLAlchemyError deleting document: {str(e)}")
+        return jsonify({'error': 'Error al eliminar el documento'}), 500
 
 @bp.route('/assign_user/<int:id>', methods=['POST'])
 @login_required
@@ -271,8 +350,13 @@ def assign_user(id):
         return redirect(url_for('clients.view', id=client.id))
     
     client.assigned_user_id = new_user_id
-    db.session.commit()
-    flash(f'Cliente asignado exitosamente a {new_user.nombre_completo}.', 'success')
+    try:
+        db.session.commit()
+        flash(f'Cliente asignado exitosamente a {new_user.nombre_completo}.', 'success')
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"SQLAlchemyError assigning client: {str(e)}")
+        flash('Error al asignar el cliente. Por favor intente nuevamente.', 'error')
     return redirect(url_for('clients.view', id=client.id))
 
 @bp.route('/assignable')

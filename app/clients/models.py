@@ -49,15 +49,16 @@ class Client(db.Model):
     email_empresa = db.Column(db.String(100), nullable=True)
     rfc_empresa = db.Column(db.String(13), nullable=True)
     nrp = db.Column(db.String(20), nullable=True)  # Número de Registro Patronal
-    telefono = db.Column(db.String(10), nullable=True)  # Exactly 10 digits
-    extension = db.Column(db.String(10), nullable=True)
-    url = db.Column(db.String(200), nullable=True)
-    horario = db.Column(db.String(100), nullable=True)
-    ingreso_mensual = db.Column(db.Numeric(10, 2), nullable=True)
-    ingresos_adicionales = db.Column(db.String(200), nullable=True)
-    empresa_colonia = db.Column(db.String(100), nullable=True)
-    empresa_estado = db.Column(db.String(50), nullable=True)
-    empresa_codigo_postal = db.Column(db.String(10), nullable=True)
+    ingresos = db.Column(db.Float, nullable=True)
+    ingresos_adicionales = db.Column(db.Float, nullable=True)
+    
+    # Assigned User and Status
+    assigned_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    assigned_user = db.relationship('User', foreign_keys=[assigned_user_id], backref=db.backref('assigned_clients', lazy='dynamic'))
+    estatus = db.Column(db.String(20), nullable=False, default='activo')
+    
+    # Documents
+    documents = db.relationship('Document', backref='client', lazy=True)
 
     # Referencias
     ref1_nombre = db.Column(db.String(200), nullable=True)
@@ -92,12 +93,10 @@ class Client(db.Model):
 
     # Metadata
     fecha_registro = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
-    estatus = db.Column(db.String(50), nullable=True)
     notas = db.Column(db.Text, nullable=True)
     notas_seguimiento = db.Column(db.Text, nullable=True, server_default='')
     fecha_ultimo_contacto = db.Column(db.Date, nullable=True)
     fecha_siguiente_contacto = db.Column(db.Date, nullable=True)
-    assigned_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -109,8 +108,6 @@ class Client(db.Model):
     conyuge_email = db.Column(db.String(120), nullable=True)
     conyuge_telefono = db.Column(db.String(20), nullable=True)
     conyuge_celular = db.Column(db.String(20), nullable=True)
-
-    documents = db.relationship('Document', backref='client', lazy=True)
 
     @property
     def nombre_completo(self):

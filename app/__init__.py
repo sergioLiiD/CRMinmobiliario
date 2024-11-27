@@ -45,9 +45,6 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
     csrf.init_app(app)
     
-    # Enable CSRF protection globally
-    csrf.init_app(app)
-    
     # Ensure upload directories exist
     ensure_upload_dirs(app)
 

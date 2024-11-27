@@ -31,7 +31,7 @@ class User(UserMixin, db.Model):
     last_login = db.Column(db.DateTime)
 
     # Relationships
-    clients = db.relationship('Client', backref='assigned_user', lazy='dynamic')
+    clients = db.relationship('Client', lazy='dynamic')
     team_members = db.relationship(
         'User',
         secondary=team_leader_assignments,
@@ -141,6 +141,7 @@ class User(UserMixin, db.Model):
 
     def get_assignable_clients(self):
         """Get list of clients that this user can assign lots to"""
+        from app.clients.models import Client
         if self.has_role(UserRole.ADMIN) or self.has_role(UserRole.GERENTE):
             return Client.query.filter_by(estatus='activo').all()
             

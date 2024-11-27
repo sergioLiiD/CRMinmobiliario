@@ -105,6 +105,11 @@ class Lote(db.Model):
                                  back_populates='lote',
                                  cascade='all, delete-orphan')
 
+    @property
+    def is_available(self):
+        """Check if the lot is available for assignment"""
+        return self.estado_del_inmueble == 'Libre'
+
     def asignar_a_cliente(self, client, user, notas=None):
         """Assign this lot to a client"""
         if self.estado_del_inmueble != 'Libre':
@@ -115,10 +120,9 @@ class Lote(db.Model):
             
         # Create new assignment
         asignacion = LoteAsignacion(
-            lote=self,
-            client=client,
-            user=user,
-            estado='Apartado',
+            lote_id=self.id,
+            client_id=client.id,
+            user_id=user.id,
             notas=notas
         )
         
@@ -137,7 +141,7 @@ class Lote(db.Model):
             lote=self,
             client=self.asignacion.client,
             user=user,
-            fecha_inicio=self.asignacion.fecha_asignacion,
+            fecha_inicio=self.asignacion.fecha_inicio,
             fecha_fin=datetime.utcnow(),
             estado=self.asignacion.estado,
             motivo_cambio=motivo,
@@ -158,15 +162,26 @@ class LoteAsignacion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     lote_id = db.Column(db.Integer, db.ForeignKey('lotes.id'), nullable=False)
     client_id = db.Column(db.Integer, db.ForeignKey('client.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # User who made the assignment
-    fecha_asignacion = db.Column(db.DateTime, default=datetime.utcnow)
-    estado = db.Column(db.String(50), nullable=False)  # Apartado or Titulado
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    fecha_asignacion = db.Column(db.DateTime, default=datetime.utcnow)  # Keep old column for compatibility
+    fecha_inicio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    fecha_fin = db.Column(db.DateTime, nullable=True)
+    estado = db.Column(db.String(50), nullable=False, default='Apartado')
     notas = db.Column(db.Text, nullable=True)
     
     # Relationships
     lote = db.relationship('Lote', back_populates='asignacion')
-    client = db.relationship('Client', backref='lote_actual')
-    user = db.relationship('User', backref='asignaciones')
+    client = db.relationship('Client', backref='lotes_asignados')
+    user = db.relationship('User', backref='asignaciones_realizadas')
+    
+    def __init__(self, lote_id, client_id, user_id, notas=None, fecha_inicio=None):
+        self.lote_id = lote_id
+        self.client_id = client_id
+        self.user_id = user_id
+        self.notas = notas
+        self.fecha_inicio = fecha_inicio or datetime.utcnow()
+        self.fecha_asignacion = self.fecha_inicio  # Keep old column in sync
+        self.estado = 'Apartado'
 
 class LoteAsignacionHistorial(db.Model):
     __tablename__ = 'lote_asignaciones_historial'

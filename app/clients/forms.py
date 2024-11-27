@@ -1,10 +1,10 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SelectField, DateField, FloatField, IntegerField, DecimalField, SubmitField, EmailField
-from wtforms.validators import DataRequired, Email, Optional, Length, ValidationError
+from wtforms.validators import DataRequired, Email, Optional, Length, ValidationError, Regexp
 from datetime import date
 import re
 from app.clients.models import ESTATUS_CHOICES
-from app.auth.models import User
+from app.auth.models import User, UserRole
 from flask_login import current_user
 
 def validate_phone(form, field):
@@ -13,60 +13,46 @@ def validate_phone(form, field):
 
 class ClientForm(FlaskForm):
     # Datos Personales
-    nombre = StringField('Nombre', validators=[DataRequired(), Length(max=100)])
-    apellido_paterno = StringField('Apellido Paterno', validators=[DataRequired(), Length(max=100)])
-    apellido_materno = StringField('Apellido Materno', validators=[DataRequired(), Length(max=100)])
+    assigned_user_id = SelectField('Asignado a', coerce=int, validators=[DataRequired(message='El usuario asignado es requerido')])
+    nombre = StringField('Nombre', validators=[DataRequired(message='El nombre es requerido'), Length(max=100)])
+    apellido_paterno = StringField('Apellido Paterno', validators=[DataRequired(message='El apellido paterno es requerido'), Length(max=100)])
+    apellido_materno = StringField('Apellido Materno', validators=[DataRequired(message='El apellido materno es requerido'), Length(max=100)])
     fecha_nacimiento = DateField('Fecha de Nacimiento', format='%Y-%m-%d', validators=[Optional()])
-    nacionalidad = StringField('Nacionalidad', validators=[Optional(), Length(max=50)])
-    sexo = SelectField('Sexo',
-                      choices=[('', 'Seleccione...'), 
-                              ('masculino', 'Masculino'), 
-                              ('femenino', 'Femenino')],
-                      validators=[Optional()])
+    nacionalidad = SelectField('Nacionalidad',
+                             choices=[('', 'Seleccionar...'),
+                                    ('mexicana', 'Mexicana'),
+                                    ('extranjera', 'Extranjera')],
+                             validators=[Optional()])
+    sexo = SelectField('Sexo', choices=[('', 'Seleccionar...'), ('M', 'Masculino'), ('F', 'Femenino')], validators=[Optional()])
     estado_civil = SelectField('Estado Civil',
-                             choices=[('', 'Seleccione...'), 
-                                     ('soltero', 'Soltero'), 
-                                     ('casado', 'Casado'),
-                                     ('divorciado', 'Divorciado/a'),
-                                     ('viudo', 'Viudo/a'),
-                                     ('union_libre', 'Unión Libre')],
+                             choices=[('', 'Seleccionar...'), 
+                                    ('soltero', 'Soltero'), 
+                                    ('casado', 'Casado'),
+                                    ('divorciado', 'Divorciado'),
+                                    ('viudo', 'Viudo'),
+                                    ('union_libre', 'Unión Libre')],
                              validators=[Optional()])
     regimen_matrimonial = SelectField('Régimen Matrimonial',
-                                    choices=[('', 'Seleccione...'), 
-                                            ('separacion_bienes', 'Separación de Bienes'), 
-                                            ('sociedad_conyugal', 'Sociedad Conyugal')],
+                                    choices=[('', 'Seleccionar...'),
+                                           ('bienes_separados', 'Bienes Separados'),
+                                           ('sociedad_conyugal', 'Sociedad Conyugal')],
                                     validators=[Optional()])
-    rfc = StringField('RFC', validators=[Optional(), Length(min=12, max=13)])
-    curp = StringField('CURP', validators=[Optional(), Length(min=18, max=18)])
-    email = EmailField('Email', validators=[Optional(), Email(), Length(max=120)])
+    rfc = StringField('RFC', validators=[Optional(), Length(min=12, max=13, message='El RFC debe tener entre 12 y 13 caracteres')])
+    curp = StringField('CURP', validators=[Optional(), Length(min=18, max=18, message='El CURP debe tener 18 caracteres')])
+    email = StringField('Email', validators=[Optional(), Email(message='Por favor ingrese un email válido'), Length(max=120)])
     telefono = StringField('Teléfono Fijo', validators=[Optional(), validate_phone])
-    celular = StringField('Celular', validators=[DataRequired(), validate_phone])
+    celular = StringField('Celular', validators=[
+        DataRequired(message='El celular es requerido'),
+        Regexp(r'^\d{10}$', message='El celular debe tener exactamente 10 dígitos')
+    ])
     tipo_de_credito = SelectField('Tipo de Crédito',
-                               choices=[('', 'Seleccione...'),
+                               choices=[('', 'Seleccionar...'),
                                       ('infonavit', 'Infonavit'),
-                                      ('cofinavit', 'Cofinavit'),
-                                      ('apoyo_infonavit', 'Apoyo Infonavit'),
-                                      ('linea_iii', 'Línea III'),
                                       ('fovissste', 'Fovissste'),
-                                      ('fovissste_para_todos', 'Fovissste Para Todos'),
-                                      ('alia2', 'Alia2'),
-                                      ('respalda2', 'Respalda2'),
-                                      ('isssfam', 'Isssfam'),
-                                      ('imss', 'Imss'),
-                                      ('caprepol', 'Caprepol'),
-                                      ('credito_bancario', 'Crédito Bancario')],
+                                      ('bancario', 'Bancario'),
+                                      ('contado', 'Contado')],
                                validators=[Optional()])
-    banco = SelectField('Banco',
-                     choices=[('', 'Seleccione un banco'),
-                             ('bbva', 'BBVA'),
-                             ('scotiabank', 'Scotiabank'),
-                             ('santander', 'Santander'),
-                             ('hsbc', 'HSBC'),
-                             ('banorte', 'Banorte'),
-                             ('inbursa', 'Inbursa'),
-                             ('banbajio', 'Banbajio'),
-                             ('otro', 'Otro')],
-                     validators=[Optional()])
+    banco = StringField('Banco', validators=[Optional()])
     direccion = StringField('Dirección', validators=[Optional(), Length(max=200)])
     colonia = StringField('Colonia', validators=[Optional(), Length(max=100)])
     ciudad = StringField('Ciudad', validators=[Optional(), Length(max=64)])
@@ -167,15 +153,25 @@ class ClientForm(FlaskForm):
     notas_seguimiento = TextAreaField('Notas de Seguimiento', validators=[Optional()])
     fecha_ultimo_contacto = DateField('Fecha de Último Contacto', format='%Y-%m-%d', validators=[Optional()])
     fecha_siguiente_contacto = DateField('Fecha de Siguiente Contacto', format='%Y-%m-%d', validators=[Optional()])
-    assigned_user_id = SelectField('Asignado a', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Guardar')
 
     def __init__(self, *args, **kwargs):
         super(ClientForm, self).__init__(*args, **kwargs)
         
         # Get list of available users based on current user's role
-        self.assigned_user_id.choices = [(user.id, user.nombre_completo) 
-                                       for user in current_user.get_viewable_users()]
+        self.assigned_user_id.choices = [(current_user.id, current_user.nombre_completo)]
+        if (current_user.role == UserRole.ADMIN.value or 
+            current_user.role == UserRole.GERENTE.value or 
+            current_user.role == UserRole.LIDER.value):
+            # Add current user as first choice
+            users = current_user.get_viewable_users()
+            self.assigned_user_id.choices = [(current_user.id, current_user.nombre_completo)] + [
+                (user.id, user.nombre_completo) for user in users if user.id != current_user.id
+            ]
+        
+        # Set default value to current user's ID
+        if not self.assigned_user_id.data:
+            self.assigned_user_id.data = current_user.id
 
     def validate_fecha_nacimiento(self, field):
         if field.data > date.today():
