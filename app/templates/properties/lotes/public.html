@@ -257,17 +257,16 @@ function loadAssignableClients() {
         method: 'GET',
         headers: {
             'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Accept': 'application/json'
         },
-        credentials: 'include'  
+        credentials: 'same-origin'
     })
     .then(response => {
         if (!response.ok) {
             if (response.status === 403) {
                 throw new Error('Error de autenticación. Por favor recargue la página e intente nuevamente.');
             }
-            throw new Error('Server responded with status ' + response.status);
+            throw new Error('Error al cargar los clientes. Por favor intente nuevamente.');
         }
         return response.json();
     })
@@ -285,7 +284,7 @@ function loadAssignableClients() {
     .catch(error => {
         console.error('Error loading clients:', error);
         const errorDiv = document.getElementById('assignmentError');
-        errorDiv.textContent = 'Error al cargar la lista de clientes. Por favor intente nuevamente.';
+        errorDiv.textContent = error.message || 'Error al cargar la lista de clientes. Por favor intente nuevamente.';
         errorDiv.style.display = 'block';
     });
 }

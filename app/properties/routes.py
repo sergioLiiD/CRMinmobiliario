@@ -620,11 +620,12 @@ def get_lote_details(lote_id):
         error_response.headers['Content-Type'] = 'application/json'
         return error_response, 500
 
-@bp.route('/properties/api/clients/assignable')
+@bp.route('/api/clients/assignable')
 @login_required
 def get_assignable_clients():
     """Get list of clients that can be assigned lots by the current user"""
     try:
+        current_app.logger.info("Loading assignable clients")
         clients = current_user.get_assignable_clients()
         return jsonify([{
             'id': client.id,
@@ -635,7 +636,7 @@ def get_assignable_clients():
         current_app.logger.error(f"Error in get_assignable_clients: {str(e)}")
         return jsonify({'error': 'Error al cargar la lista de clientes'}), 500
 
-@bp.route('/properties/api/lotes/<int:lote_id>/assign', methods=['POST'])
+@bp.route('/api/lotes/<int:lote_id>/assign', methods=['POST'])
 @login_required
 def assign_lot(lote_id):
     """Assign a lot to a client"""
@@ -702,7 +703,7 @@ def assign_lot(lote_id):
         current_app.logger.error(f"Error in assign_lot: {str(e)}\n{traceback.format_exc()}")
         return jsonify({'error': f'Error al apartar el lote: {str(e)}'}), 500
 
-@bp.route('/properties/api/lotes/<int:lote_id>/history')
+@bp.route('/api/lotes/<int:lote_id>/history')
 @login_required
 def get_lot_history(lote_id):
     """Get assignment history for a lot"""
@@ -726,7 +727,7 @@ def get_lot_history(lote_id):
         'motivo_cambio': record.motivo_cambio
     } for record in history])
 
-@bp.route('/properties/api/lotes/<int:lote_id>/release', methods=['POST'])
+@bp.route('/api/lotes/<int:lote_id>/release', methods=['POST'])
 @login_required
 def release_lot(lote_id):
     """Release a lot back to available status"""
@@ -762,40 +763,45 @@ def release_lot(lote_id):
         db.session.rollback()
         return jsonify({'error': 'Error al liberar el lote'}), 500
 
-@bp.route('/properties/lotes/public', methods=['GET'])
+@bp.route('/lotes/public', methods=['GET'])
 def lotes_public():
-    form = LoteFilterForm(request.args, meta={'csrf': False})
-    lotes = []
-    
-    # If fraccionamiento_id is provided in AJAX request, return paquetes list
-    if request.args.get('fraccionamiento_id'):
-        fraccionamiento_id = int(request.args.get('fraccionamiento_id'))
-        paquetes = Paquete.query.filter_by(fraccionamiento_id=fraccionamiento_id).order_by('nombre').all()
-        return jsonify([(p.id, p.nombre) for p in paquetes])
-    
-    # Only build query if fraccionamiento is selected
-    if form.fraccionamiento.data:
-        # Update paquetes choices based on selected fraccionamiento
-        paquetes = Paquete.query.filter_by(fraccionamiento_id=form.fraccionamiento.data).order_by('nombre').all()
-        form.paquete.choices = [(0, 'Todos los paquetes')] + [(p.id, p.nombre) for p in paquetes]
+    try:
+        form = LoteFilterForm(request.args, meta={'csrf': False})
+        lotes = []
         
-        # Build query based on filters
-        query = Lote.query
-        paquete_ids = [p.id for p in paquetes]
-        query = query.filter(Lote.paquete_id.in_(paquete_ids))
+        # If fraccionamiento_id is provided in AJAX request, return paquetes list
+        if request.args.get('fraccionamiento_id'):
+            fraccionamiento_id = int(request.args.get('fraccionamiento_id'))
+            paquetes = Paquete.query.filter_by(fraccionamiento_id=fraccionamiento_id).order_by('nombre').all()
+            return jsonify([(p.id, p.nombre) for p in paquetes])
         
-        if form.paquete.data and form.paquete.data != 0:  # 0 means "All packages"
-            query = query.filter_by(paquete_id=form.paquete.data)
+        # Only build query if fraccionamiento is selected
+        if form.fraccionamiento.data:
+            # Update paquetes choices based on selected fraccionamiento
+            paquetes = Paquete.query.filter_by(fraccionamiento_id=form.fraccionamiento.data).order_by('nombre').all()
+            form.paquete.choices = [(0, 'Todos los paquetes')] + [(p.id, p.nombre) for p in paquetes]
+            
+            # Build query based on filters
+            query = Lote.query
+            paquete_ids = [p.id for p in paquetes]
+            query = query.filter(Lote.paquete_id.in_(paquete_ids))
+            
+            if form.paquete.data and form.paquete.data != 0:  # 0 means "All packages"
+                query = query.filter_by(paquete_id=form.paquete.data)
+            
+            if form.estado.data:
+                query = query.filter_by(estado_del_inmueble=form.estado.data)
+            
+            # Get lotes with their relationships
+            lotes = query.join(Paquete).join(Fraccionamiento).join(Prototipo).order_by(
+                Fraccionamiento.nombre,
+                Paquete.nombre,
+                Lote.manzana,
+                Lote.lote
+            ).all()
         
-        if form.estado.data:
-            query = query.filter_by(estado_del_inmueble=form.estado.data)
-        
-        # Get lotes with their relationships
-        lotes = query.join(Paquete).join(Fraccionamiento).join(Prototipo).order_by(
-            Fraccionamiento.nombre,
-            Paquete.nombre,
-            Lote.manzana,
-            Lote.lote
-        ).all()
-    
-    return render_template('properties/lotes/public.html', form=form, lotes=lotes)
+        return render_template('properties/lotes/public.html', form=form, lotes=lotes)
+    except Exception as e:
+        current_app.logger.error(f"Error in lotes_public: {str(e)}")
+        flash('Error al cargar los lotes. Por favor intente nuevamente.', 'error')
+        return render_template('properties/lotes/public.html', form=form, lotes=[])
