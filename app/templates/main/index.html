@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title">¡Bienvenido, {{ current_user.nombre_completo }}!</h1>
+                    <p class="card-text">Este es su panel de control del CRM. ¡Más funciones próximamente!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

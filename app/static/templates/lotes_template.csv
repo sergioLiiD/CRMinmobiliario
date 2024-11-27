@@ -1,0 +1,2 @@
+prototipo_id,calle,numero_exterior,numero_interior,manzana,lote,cuv,terreno,tipo_de_lote,estado_del_inmueble,precio,orientacion_1,medidas_orientacion_1,colindancia_1,orientacion_2,medidas_orientacion_2,colindancia_2,orientacion_3,medidas_orientacion_3,colindancia_3,orientacion_4,medidas_orientacion_4,colindancia_4
+1,Calle San Mateo,101,,XVII,29,2413051228100012,105.00,Regular,Libre,925000.00,Noreste,15 metros,Lote Número 30,Suroeste,7 y 8 metros,Lote Número 03 y Lote Número 04 Respectivamente,Sureste,7 metros,Calle San Mateo,Noroeste,7 metros,Lote Número 05

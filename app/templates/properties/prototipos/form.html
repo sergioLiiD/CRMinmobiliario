@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>{{ title }}</h1>
+    
+    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate id="prototipoForm">
+        {{ form.hidden_tag() }}
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="nombre_prototipo" class="form-label">{{ form.nombre_prototipo.label }}</label>
+                {{ form.nombre_prototipo(class="form-control", id="nombre_prototipo", required=true) }}
+            </div>
+            
+            <div class="col-md-6 mb-3">
+                <label for="precio" class="form-label">{{ form.precio.label }}</label>
+                {{ form.precio(class="form-control", id="precio", required=true) }}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="superficie_terreno" class="form-label">{{ form.superficie_terreno.label }}</label>
+                {{ form.superficie_terreno(class="form-control", id="superficie_terreno", required=true) }}
+            </div>
+            
+            <div class="col-md-6 mb-3">
+                <label for="superficie_construccion" class="form-label">{{ form.superficie_construccion.label }}</label>
+                {{ form.superficie_construccion(class="form-control", id="superficie_construccion", required=true) }}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label for="niveles" class="form-label">{{ form.niveles.label }}</label>
+                {{ form.niveles(class="form-control", id="niveles", required=true) }}
+            </div>
+            
+            <div class="col-md-4 mb-3">
+                <label for="recamaras" class="form-label">{{ form.recamaras.label }}</label>
+                {{ form.recamaras(class="form-control", id="recamaras", required=true) }}
+            </div>
+            
+            <div class="col-md-4 mb-3">
+                <label for="banos" class="form-label">{{ form.banos.label }}</label>
+                {{ form.banos(class="form-control", id="banos", required=true) }}
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="observaciones" class="form-label">{{ form.observaciones.label }}</label>
+            {{ form.observaciones(class="form-control", id="observaciones", rows="3") }}
+        </div>
+
+        <!-- Image Upload Section -->
+        <div class="mb-3">
+            <label for="imagenes" class="form-label">{{ form.imagenes.label }}</label>
+            {{ form.imagenes(class="form-control", id="imagenes", multiple=true, accept="image/*") }}
+            <div class="form-text">Formatos permitidos: PNG, JPG, JPEG, GIF. Tamaño máximo: 16MB por imagen, 64MB en total.</div>
+            
+            <!-- Upload Progress -->
+            <div id="uploadProgress" class="mt-2" style="display: none;">
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         style="width: 0%" 
+                         id="uploadProgressBar">0%</div>
+                </div>
+                <div id="uploadStatus" class="text-muted mt-1"></div>
+            </div>
+        </div>
+
+        <!-- Image Preview Section -->
+        <div id="imagePreviewSection" class="mb-3">
+            <div id="imagePreview" class="row"></div>
+        </div>
+
+        <!-- Display Existing Images -->
+        {% if imagenes %}
+        <div class="mb-4">
+            <h4>Imágenes Actuales</h4>
+            <div class="row">
+                {% for imagen in imagenes %}
+                <div class="col-md-3 mb-3">
+                    <div class="card">
+                        <img src="{{ url_for('static', filename='uploads/prototipos/' + imagen.filename) }}" 
+                             class="card-img-top" 
+                             alt="Imagen de prototipo">
+                        <div class="card-body">
+                            <form action="{{ url_for('properties.prototipo_imagen_eliminar', id=imagen.id) }}" 
+                                  method="POST" 
+                                  class="d-inline">
+                                <button type="submit" 
+                                        class="btn btn-danger btn-sm" 
+                                        onclick="return confirm('¿Estás seguro de eliminar esta imagen?')">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary" id="submitBtn" onclick="submitForm(event)">
+                <i class="fas fa-save me-1"></i> Guardar
+            </button>
+            <a href="{{ url_for('properties.prototipos_index') }}" class="btn btn-secondary">
+                <i class="fas fa-times me-1"></i> Cancelar
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+function submitForm(event) {
+    event.preventDefault();
+    console.log('Submit button clicked');
+    
+    const form = document.getElementById('prototipoForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const uploadProgressBar = document.getElementById('uploadProgressBar');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const fileInput = document.getElementById('imagenes');
+    
+    if (!form.checkValidity()) {
+        console.log('Form validation failed');
+        form.classList.add('was-validated');
+        return;
+    }
+    
+    // Check file sizes
+    const files = fileInput.files;
+    if (files.length > 0) {
+        const maxFileSize = 16 * 1024 * 1024; // 16MB
+        const maxTotalSize = 64 * 1024 * 1024; // 64MB
+        let totalSize = 0;
+        
+        for (let file of files) {
+            if (file.size > maxFileSize) {
+                alert(`El archivo "${file.name}" excede el tamaño máximo permitido de 16MB`);
+                return;
+            }
+            totalSize += file.size;
+        }
+        
+        if (totalSize > maxTotalSize) {
+            alert(`El tamaño total de los archivos (${(totalSize / (1024 * 1024)).toFixed(1)}MB) excede el límite de 64MB`);
+            return;
+        }
+    }
+    
+    console.log('Form is valid, preparing to submit');
+    submitBtn.disabled = true;
+    uploadProgress.style.display = 'block';
+    uploadStatus.textContent = 'Preparando archivos...';
+    
+    const formData = new FormData(form);
+    
+    // Log form data
+    console.log('Form data contents:');
+    for (let pair of formData.entries()) {
+        if (pair[1] instanceof File) {
+            console.log(pair[0] + ': File -', pair[1].name, '(', pair[1].size, 'bytes)');
+        } else {
+            console.log(pair[0] + ':', pair[1]);
+        }
+    }
+    
+    // Create and configure the request
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', form.action, true);
+    
+    // Upload progress handler
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            uploadProgressBar.style.width = percentComplete + '%';
+            uploadProgressBar.textContent = Math.round(percentComplete) + '%';
+            uploadStatus.textContent = `Subiendo archivos... ${Math.round(e.loaded / 1024 / 1024 * 100) / 100}MB de ${Math.round(e.total / 1024 / 1024 * 100) / 100}MB`;
+        }
+    };
+    
+    // Handle response
+    xhr.onload = function() {
+        console.log('Response received:', xhr.status, xhr.statusText);
+        
+        if (xhr.status === 200) {
+            console.log('Upload successful');
+            uploadStatus.textContent = 'Archivos subidos exitosamente!';
+            uploadProgressBar.classList.remove('progress-bar-animated');
+            window.location.href = '{{ url_for("properties.prototipos_index") }}';
+        } else {
+            console.error('Upload failed:', xhr.status, xhr.statusText);
+            uploadStatus.textContent = 'Error en la subida: ' + xhr.statusText;
+            uploadProgressBar.classList.add('bg-danger');
+            submitBtn.disabled = false;
+            
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.error) {
+                    alert(response.error);
+                }
+            } catch (e) {
+                // If response is not JSON, show the response text
+                alert('Error: ' + xhr.responseText);
+            }
+        }
+    };
+    
+    // Handle errors
+    xhr.onerror = function(e) {
+        console.error('XHR error:', e);
+        uploadStatus.textContent = 'Error de conexión';
+        uploadProgressBar.classList.add('bg-danger');
+        submitBtn.disabled = false;
+    };
+    
+    // Send the form data
+    console.log('Sending form data...');
+    try {
+        xhr.send(formData);
+        console.log('Form data sent');
+    } catch (error) {
+        console.error('Error sending form data:', error);
+        uploadStatus.textContent = 'Error: ' + error.message;
+        uploadProgressBar.classList.add('bg-danger');
+        submitBtn.disabled = false;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Document loaded');
+    const form = document.getElementById('prototipoForm');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (!form || !submitBtn) {
+        console.error('Required elements not found:', {
+            form: !!form,
+            submitBtn: !!submitBtn
+        });
+        return;
+    }
+    
+    console.log('Form and submit button found');
+    
+    // Image preview
+    const imageInput = document.getElementById('imagenes');
+    if (imageInput) {
+        imageInput.addEventListener('change', function(event) {
+            console.log('Files selected:', event.target.files.length);
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.innerHTML = ''; // Clear existing previews
+            
+            Array.from(event.target.files).forEach((file, index) => {
+                console.log('Processing file:', file.name, 'size:', file.size);
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-3 mb-3';
+                    
+                    col.innerHTML = `
+                        <div class="card">
+                            <img src="${e.target.result}" class="card-img-top" alt="Vista previa">
+                            <div class="card-body">
+                                <p class="card-text">${file.name}</p>
+                                <small class="text-muted">
+                                    ${(file.size / 1024 / 1024).toFixed(2)} MB
+                                </small>
+                            </div>
+                        </div>
+                    `;
+                    
+                    previewContainer.appendChild(col);
+                };
+                
+                reader.readAsDataURL(file);
+            });
+        });
+    } else {
+        console.error('Image input not found');
+    }
+});
+</script>
+{% endblock %}

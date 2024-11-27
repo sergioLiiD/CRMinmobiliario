@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ 'Editar' if fraccionamiento else 'Nuevo' }} Fraccionamiento</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.csrf_token }}
+                        <div class="mb-3">
+                            {{ form.nombre.label(class="form-label") }}
+                            {{ form.nombre(class="form-control") }}
+                            {% if form.nombre.errors %}
+                                {% for error in form.nombre.errors %}
+                                    <span class="text-danger">{{ error }}</span>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.ubicacion.label(class="form-label") }}
+                            {{ form.ubicacion(class="form-control") }}
+                            {% if form.ubicacion.errors %}
+                                {% for error in form.ubicacion.errors %}
+                                    <span class="text-danger">{{ error }}</span>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.logo.label(class="form-label") }}
+                            {{ form.logo(class="form-control") }}
+                            {% if form.logo.description %}
+                                <div class="form-text">{{ form.logo.description }}</div>
+                            {% endif %}
+                            {% if form.logo.errors %}
+                                {% for error in form.logo.errors %}
+                                    <span class="text-danger">{{ error }}</span>
+                                {% endfor %}
+                            {% endif %}
+                            {% if fraccionamiento and fraccionamiento.logo %}
+                                <div class="mt-2">
+                                    <img src="{{ url_for('static', filename=fraccionamiento.logo) }}" alt="Logo actual" class="img-thumbnail" style="max-width: 200px;">
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.sembrado.label(class="form-label") }}
+                            {{ form.sembrado(class="form-control") }}
+                            {% if form.sembrado.description %}
+                                <div class="form-text">{{ form.sembrado.description }}</div>
+                            {% endif %}
+                            {% if form.sembrado.errors %}
+                                {% for error in form.sembrado.errors %}
+                                    <span class="text-danger">{{ error }}</span>
+                                {% endfor %}
+                            {% endif %}
+                            {% if fraccionamiento and fraccionamiento.sembrado %}
+                                <div class="mt-2">
+                                    {% if fraccionamiento.sembrado.endswith('.pdf') %}
+                                        <a href="{{ url_for('static', filename=fraccionamiento.sembrado) }}" target="_blank" class="btn btn-sm btn-primary">
+                                            Ver Sembrado Actual (PDF)
+                                        </a>
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename=fraccionamiento.sembrado) }}" alt="Sembrado actual" class="img-thumbnail" style="max-width: 300px;">
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="text-end">
+                            <a href="{{ url_for('properties.fraccionamientos_index') }}" class="btn btn-secondary">Cancelar</a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                    {% if fraccionamiento %}
+                    <hr>
+                    <form action="{{ url_for('properties.fraccionamiento_delete', id=fraccionamiento.id) }}" method="POST" class="mt-3" onsubmit="return confirm('¿Está seguro de que desea eliminar este fraccionamiento? Esta acción no se puede deshacer.');">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Eliminar Fraccionamiento
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

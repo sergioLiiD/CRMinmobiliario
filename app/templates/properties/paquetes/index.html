@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('properties.fraccionamientos_index') }}">Fraccionamientos</a></li>
+            <li class="breadcrumb-item active">{{ fraccionamiento.nombre }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Paquetes - {{ fraccionamiento.nombre }}</h1>
+        <a href="{{ url_for('properties.paquete_new', fraccionamiento_id=fraccionamiento.id) }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo Paquete
+        </a>
+    </div>
+
+    <div class="row">
+        {% for paquete in paquetes %}
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ paquete.nombre }}</h5>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            Creado: {{ paquete.created_at.strftime('%d/%m/%Y') }}
+                        </small>
+                    </p>
+                    <a href="{{ url_for('properties.lotes_index', paquete_id=paquete.id) }}" 
+                       class="btn btn-outline-primary">
+                        Ver Lotes
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No hay paquetes registrados en este fraccionamiento.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

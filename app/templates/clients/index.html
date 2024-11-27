@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>Clientes</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('clients.new') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nuevo Cliente
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    {{ search_form.busqueda(class="form-control", placeholder="Buscar por nombre, email...") }}
+                </div>
+                <div class="col-md-4">
+                    {{ search_form.estatus(class="form-select") }}
+                </div>
+                <div class="col-md-4">
+                    {{ search_form.submit(class="btn btn-secondary w-100") }}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tipo de Crédito</th>
+                    <th>Estatus</th>
+                    <th>Contacto</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients.items %}
+                <tr>
+                    <td>
+                        {% if client.nombre or client.apellido_paterno or client.apellido_materno %}
+                            {{ client.nombre if client.nombre else '-' }}
+                            {{ client.apellido_paterno if client.apellido_paterno else '' }}
+                            {{ client.apellido_materno if client.apellido_materno else '' }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if client.tipo_de_credito %}
+                            {{ client.tipo_de_credito|title }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge bg-{{ 
+                            'primary' if client.estatus == 'nuevo' else
+                            'success' if client.estatus == 'activo' else
+                            'info' if client.estatus == 'en_seguimiento' else
+                            'secondary' 
+                        }}">
+                            {{ client.estatus|title if client.estatus else '-' }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if client.email %}
+                        <small class="d-block">
+                            <i class="fas fa-envelope"></i> {{ client.email }}
+                        </small>
+                        {% endif %}
+                        {% if client.celular %}
+                        <small class="d-block">
+                            <i class="fas fa-mobile-alt"></i> {{ client.celular }}
+                        </small>
+                        {% endif %}
+                        {% if client.telefono %}
+                        <small class="d-block">
+                            <i class="fas fa-phone"></i> {{ client.telefono }}
+                        </small>
+                        {% endif %}
+                        {% if not client.email and not client.celular and not client.telefono %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('clients.view', id=client.id) }}" 
+                               class="btn btn-sm btn-info" title="Ver">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('clients.edit', id=client.id) }}" 
+                               class="btn btn-sm btn-warning" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{{ url_for('clients.delete', id=client.id) }}" 
+                               class="btn btn-sm btn-danger" 
+                               onclick="return confirm('¿Está seguro de que desea eliminar este cliente?')"
+                               title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center">No se encontraron clientes</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if clients.pages > 1 %}
+    <nav aria-label="Navegación de páginas">
+        <ul class="pagination justify-content-center">
+            {% for page in clients.iter_pages() %}
+                {% if page %}
+                    <li class="page-item {{ 'active' if page == clients.page else '' }}">
+                        <a class="page-link" href="{{ url_for('clients.index', page=page) }}">{{ page }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

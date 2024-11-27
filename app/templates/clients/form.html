@@ -1,0 +1,1050 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block styles %}
+<style>
+    /* Custom tab styles */
+    .client-tabs .nav-link {
+        color: var(--text-color);
+        border: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        padding: 0.75rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+        background-color: transparent !important;
+    }
+    
+    .client-tabs .nav-link:hover {
+        color: var(--primary-color);
+        border-color: transparent;
+        background-color: rgba(44, 62, 80, 0.05) !important;
+    }
+    
+    .client-tabs .nav-link.active {
+        color: var(--primary-color) !important;
+        font-weight: 600;
+        border-bottom: 2px solid var(--primary-color) !important;
+        background-color: transparent !important;
+    }
+
+    .tab-content {
+        padding: 20px 0;
+    }
+
+    .info-icon {
+        width: 20px;
+        text-align: center;
+        margin-right: 8px;
+        color: var(--primary-color);
+    }
+
+    .section-title {
+        color: var(--primary-color);
+        font-weight: 600;
+        margin: 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-white border-bottom-0 pb-0">
+        <h2 class="h4 mb-3">{{ title }}</h2>
+        <ul class="nav nav-tabs client-tabs" id="clientTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link active" id="personal-tab" data-bs-toggle="tab" href="#personal" role="tab">
+                    <i class="fas fa-user info-icon"></i>Datos Personales
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" id="laboral-tab" data-bs-toggle="tab" href="#laboral" role="tab">
+                    <i class="fas fa-briefcase info-icon"></i>Información Laboral
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" id="referencias-tab" data-bs-toggle="tab" href="#referencias" role="tab">
+                    <i class="fas fa-address-book info-icon"></i>Referencias
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" id="conyugeTab" data-bs-toggle="tab" href="#conyuge" role="tab">
+                    <i class="fas fa-heart info-icon"></i>Información del Cónyuge
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" id="seguimiento-tab" data-bs-toggle="tab" href="#seguimiento" role="tab">
+                    <i class="fas fa-chart-line info-icon"></i>Seguimiento
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="documentos-tab" data-bs-toggle="tab" data-bs-target="#documentos" type="button" role="tab" aria-controls="documentos" aria-selected="false">Documentos</button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="card-body">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="tab-content" id="clientTabsContent">
+                <!-- Datos Personales -->
+                <div class="tab-pane fade show active" id="personal" role="tabpanel">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="nombre" class="form-label">Nombre</label>
+                            {{ form.nombre(class="form-control") }}
+                            {% if form.nombre.errors %}
+                                {% for error in form.nombre.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="apellido_paterno" class="form-label">Apellido Paterno</label>
+                            {{ form.apellido_paterno(class="form-control") }}
+                            {% if form.apellido_paterno.errors %}
+                                {% for error in form.apellido_paterno.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="apellido_materno" class="form-label">Apellido Materno</label>
+                            {{ form.apellido_materno(class="form-control") }}
+                            {% if form.apellido_materno.errors %}
+                                {% for error in form.apellido_materno.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="celular" class="form-label">Celular</label>
+                            {{ form.celular(class="form-control") }}
+                            {% if form.celular.errors %}
+                                {% for error in form.celular.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="estatus" class="form-label">Estatus</label>
+                            {{ form.estatus(class="form-select") }}
+                            {% if form.estatus.errors %}
+                                {% for error in form.estatus.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Email</label>
+                            {{ form.email(class="form-control", type="email") }}
+                            {% if form.email.errors %}
+                                {% for error in form.email.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="rfc" class="form-label">RFC</label>
+                            {{ form.rfc(class="form-control") }}
+                            {% if form.rfc.errors %}
+                                {% for error in form.rfc.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="curp" class="form-label">CURP</label>
+                            {{ form.curp(class="form-control") }}
+                            {% if form.curp.errors %}
+                                {% for error in form.curp.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        {% if client and client.fecha_nacimiento %}
+                        <div class="col-md-6">
+                            <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+                            <input type="date" class="form-control" value="{{ client.fecha_nacimiento.strftime('%Y-%m-%d') if client.fecha_nacimiento else '' }}" name="fecha_nacimiento">
+                        </div>
+                        {% endif %}
+                        <div class="col-md-6">
+                            <label for="nacionalidad" class="form-label">Nacionalidad</label>
+                            {{ form.nacionalidad(class="form-control") }}
+                            {% if form.nacionalidad.errors %}
+                                {% for error in form.nacionalidad.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="sexo" class="form-label">Sexo</label>
+                            {{ form.sexo(class="form-select") }}
+                            {% if form.sexo.errors %}
+                                {% for error in form.sexo.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="estado_civil" class="form-label">Estado Civil</label>
+                            {{ form.estado_civil(class="form-select") }}
+                            {% if form.estado_civil.errors %}
+                                {% for error in form.estado_civil.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6" id="regimen_matrimonial_container" style="display: none;">
+                            <label for="regimen_matrimonial" class="form-label">Régimen Matrimonial</label>
+                            {{ form.regimen_matrimonial(class="form-select") }}
+                            {% if form.regimen_matrimonial.errors %}
+                                {% for error in form.regimen_matrimonial.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="telefono" class="form-label">Teléfono</label>
+                            {{ form.telefono(class="form-control") }}
+                            {% if form.telefono.errors %}
+                                {% for error in form.telefono.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6" id="banco-container" style="display: none;">
+                            <label for="banco" class="form-label">Banco</label>
+                            {{ form.banco(class="form-control") }}
+                            {% if form.banco.errors %}
+                                {% for error in form.banco.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label for="direccion" class="form-label">Dirección</label>
+                            {{ form.direccion(class="form-control") }}
+                            {% if form.direccion.errors %}
+                                {% for error in form.direccion.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="colonia" class="form-label">Colonia</label>
+                            {{ form.colonia(class="form-control") }}
+                            {% if form.colonia.errors %}
+                                {% for error in form.colonia.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="ciudad" class="form-label">Ciudad</label>
+                            {{ form.ciudad(class="form-control") }}
+                            {% if form.ciudad.errors %}
+                                {% for error in form.ciudad.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="estado" class="form-label">Estado</label>
+                            {{ form.estado(class="form-control") }}
+                            {% if form.estado.errors %}
+                                {% for error in form.estado.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="codigo_postal" class="form-label">Código Postal</label>
+                            {{ form.codigo_postal(class="form-control") }}
+                            {% if form.codigo_postal.errors %}
+                                {% for error in form.codigo_postal.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="como_se_entero" class="form-label">¿Cómo se enteró de nosotros?</label>
+                            {{ form.como_se_entero(class="form-select") }}
+                            {% if form.como_se_entero.errors %}
+                                {% for error in form.como_se_entero.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label for="notas" class="form-label">Notas</label>
+                            {{ form.notas(class="form-control", rows="3") }}
+                            {% if form.notas.errors %}
+                                {% for error in form.notas.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información Laboral -->
+                <div class="tab-pane fade" id="laboral" role="tabpanel">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form.nombre_empresa.label(class="form-label") }}
+                            {{ form.nombre_empresa(class="form-control") }}
+                            {% if form.nombre_empresa.errors %}
+                                {% for error in form.nombre_empresa.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.puesto.label(class="form-label") }}
+                            {{ form.puesto(class="form-control") }}
+                            {% if form.puesto.errors %}
+                                {% for error in form.puesto.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.rfc_empresa.label(class="form-label") }}
+                            {{ form.rfc_empresa(class="form-control") }}
+                            {% if form.rfc_empresa.errors %}
+                                {% for error in form.rfc_empresa.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.nrp.label(class="form-label") }}
+                            {{ form.nrp(class="form-control") }}
+                            {% if form.nrp.errors %}
+                                {% for error in form.nrp.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.telefono.label(class="form-label") }}
+                            {{ form.telefono(class="form-control") }}
+                            {% if form.telefono.errors %}
+                                {% for error in form.telefono.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.extension.label(class="form-label") }}
+                            {{ form.extension(class="form-control") }}
+                            {% if form.extension.errors %}
+                                {% for error in form.extension.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.url.label(class="form-label") }}
+                            {{ form.url(class="form-control") }}
+                            {% if form.url.errors %}
+                                {% for error in form.url.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.horario.label(class="form-label") }}
+                            {{ form.horario(class="form-control") }}
+                            {% if form.horario.errors %}
+                                {% for error in form.horario.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.ingreso_mensual.label(class="form-label") }}
+                            {{ form.ingreso_mensual(class="form-control") }}
+                            {% if form.ingreso_mensual.errors %}
+                                {% for error in form.ingreso_mensual.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.ingresos_adicionales.label(class="form-label") }}
+                            {{ form.ingresos_adicionales(class="form-control") }}
+                            {% if form.ingresos_adicionales.errors %}
+                                {% for error in form.ingresos_adicionales.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            {{ form.direccion_empresa.label(class="form-label") }}
+                            {{ form.direccion_empresa(class="form-control") }}
+                            {% if form.direccion_empresa.errors %}
+                                {% for error in form.direccion_empresa.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.empresa_colonia.label(class="form-label") }}
+                            {{ form.empresa_colonia(class="form-control") }}
+                            {% if form.empresa_colonia.errors %}
+                                {% for error in form.empresa_colonia.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.empresa_estado.label(class="form-label") }}
+                            {{ form.empresa_estado(class="form-control") }}
+                            {% if form.empresa_estado.errors %}
+                                {% for error in form.empresa_estado.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.empresa_codigo_postal.label(class="form-label") }}
+                            {{ form.empresa_codigo_postal(class="form-control") }}
+                            {% if form.empresa_codigo_postal.errors %}
+                                {% for error in form.empresa_codigo_postal.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.email_empresa.label(class="form-label") }}
+                            {{ form.email_empresa(class="form-control") }}
+                            {% if form.email_empresa.errors %}
+                                {% for error in form.email_empresa.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.antiguedad.label(class="form-label") }}
+                            {{ form.antiguedad(class="form-control") }}
+                            {% if form.antiguedad.errors %}
+                                {% for error in form.antiguedad.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Referencias -->
+                <div class="tab-pane fade" id="referencias" role="tabpanel">
+                    <div class="row g-3">
+                        <h4>Referencia 1</h4>
+                        <div class="col-md-4">
+                            {{ form.ref1_nombre.label(class="form-label") }}
+                            {{ form.ref1_nombre(class="form-control") }}
+                            {% if form.ref1_nombre.errors %}
+                                {% for error in form.ref1_nombre.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.apellido_paterno_referencia_1.label(class="form-label") }}
+                            {{ form.apellido_paterno_referencia_1(class="form-control") }}
+                            {% if form.apellido_paterno_referencia_1.errors %}
+                                {% for error in form.apellido_paterno_referencia_1.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.apellido_materno_referencia_1.label(class="form-label") }}
+                            {{ form.apellido_materno_referencia_1(class="form-control") }}
+                            {% if form.apellido_materno_referencia_1.errors %}
+                                {% for error in form.apellido_materno_referencia_1.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.telefono_celular_referencia_1.label(class="form-label") }}
+                            {{ form.telefono_celular_referencia_1(class="form-control") }}
+                            {% if form.telefono_celular_referencia_1.errors %}
+                                {% for error in form.telefono_celular_referencia_1.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            {{ form.direccion_referencia_1.label(class="form-label") }}
+                            {{ form.direccion_referencia_1(class="form-control") }}
+                            {% if form.direccion_referencia_1.errors %}
+                                {% for error in form.direccion_referencia_1.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.estado_referencia_1.label(class="form-label") }}
+                            {{ form.estado_referencia_1(class="form-control") }}
+                            {% if form.estado_referencia_1.errors %}
+                                {% for error in form.estado_referencia_1.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.colonia_referencia_1.label(class="form-label") }}
+                            {{ form.colonia_referencia_1(class="form-control") }}
+                            {% if form.colonia_referencia_1.errors %}
+                                {% for error in form.colonia_referencia_1.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.entidad_referencia_1.label(class="form-label") }}
+                            {{ form.entidad_referencia_1(class="form-control") }}
+                            {% if form.entidad_referencia_1.errors %}
+                                {% for error in form.entidad_referencia_1.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.municipio_referencia_1.label(class="form-label") }}
+                            {{ form.municipio_referencia_1(class="form-control") }}
+                            {% if form.municipio_referencia_1.errors %}
+                                {% for error in form.municipio_referencia_1.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.codigo_postal_referencia_1.label(class="form-label") }}
+                            {{ form.codigo_postal_referencia_1(class="form-control") }}
+                            {% if form.codigo_postal_referencia_1.errors %}
+                                {% for error in form.codigo_postal_referencia_1.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <h4>Referencia 2</h4>
+                        <div class="col-md-4">
+                            {{ form.ref2_nombre.label(class="form-label") }}
+                            {{ form.ref2_nombre(class="form-control") }}
+                            {% if form.ref2_nombre.errors %}
+                                {% for error in form.ref2_nombre.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.apellido_paterno_referencia_2.label(class="form-label") }}
+                            {{ form.apellido_paterno_referencia_2(class="form-control") }}
+                            {% if form.apellido_paterno_referencia_2.errors %}
+                                {% for error in form.apellido_paterno_referencia_2.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.apellido_materno_referencia_2.label(class="form-label") }}
+                            {{ form.apellido_materno_referencia_2(class="form-control") }}
+                            {% if form.apellido_materno_referencia_2.errors %}
+                                {% for error in form.apellido_materno_referencia_2.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.telefono_celular_referencia_2.label(class="form-label") }}
+                            {{ form.telefono_celular_referencia_2(class="form-control") }}
+                            {% if form.telefono_celular_referencia_2.errors %}
+                                {% for error in form.telefono_celular_referencia_2.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            {{ form.direccion_referencia_2.label(class="form-label") }}
+                            {{ form.direccion_referencia_2(class="form-control") }}
+                            {% if form.direccion_referencia_2.errors %}
+                                {% for error in form.direccion_referencia_2.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.estado_referencia_2.label(class="form-label") }}
+                            {{ form.estado_referencia_2(class="form-control") }}
+                            {% if form.estado_referencia_2.errors %}
+                                {% for error in form.estado_referencia_2.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.colonia_referencia_2.label(class="form-label") }}
+                            {{ form.colonia_referencia_2(class="form-control") }}
+                            {% if form.colonia_referencia_2.errors %}
+                                {% for error in form.colonia_referencia_2.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.entidad_referencia_2.label(class="form-label") }}
+                            {{ form.entidad_referencia_2(class="form-control") }}
+                            {% if form.entidad_referencia_2.errors %}
+                                {% for error in form.entidad_referencia_2.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.municipio_referencia_2.label(class="form-label") }}
+                            {{ form.municipio_referencia_2(class="form-control") }}
+                            {% if form.municipio_referencia_2.errors %}
+                                {% for error in form.municipio_referencia_2.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.codigo_postal_referencia_2.label(class="form-label") }}
+                            {{ form.codigo_postal_referencia_2(class="form-control") }}
+                            {% if form.codigo_postal_referencia_2.errors %}
+                                {% for error in form.codigo_postal_referencia_2.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información del Cónyuge -->
+                <div class="tab-pane fade" id="conyuge" role="tabpanel">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            {{ form.conyuge_nombre.label(class="form-label") }}
+                            {{ form.conyuge_nombre(class="form-control") }}
+                            {% if form.conyuge_nombre.errors %}
+                                {% for error in form.conyuge_nombre.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.conyuge_apellido_paterno.label(class="form-label") }}
+                            {{ form.conyuge_apellido_paterno(class="form-control") }}
+                            {% if form.conyuge_apellido_paterno.errors %}
+                                {% for error in form.conyuge_apellido_paterno.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.conyuge_apellido_materno.label(class="form-label") }}
+                            {{ form.conyuge_apellido_materno(class="form-control") }}
+                            {% if form.conyuge_apellido_materno.errors %}
+                                {% for error in form.conyuge_apellido_materno.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        {% if client and client.conyuge_fecha_nacimiento %}
+                        <div class="col-md-4">
+                            <label for="conyuge_fecha_nacimiento" class="form-label">Fecha de Nacimiento del Cónyuge</label>
+                            <input type="date" class="form-control" value="{{ client.conyuge_fecha_nacimiento.strftime('%Y-%m-%d') if client.conyuge_fecha_nacimiento else '' }}" name="conyuge_fecha_nacimiento">
+                        </div>
+                        {% endif %}
+                        <div class="col-md-4">
+                            {{ form.conyuge_rfc.label(class="form-label") }}
+                            {{ form.conyuge_rfc(class="form-control") }}
+                            {% if form.conyuge_rfc.errors %}
+                                {% for error in form.conyuge_rfc.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.conyuge_curp.label(class="form-label") }}
+                            {{ form.conyuge_curp(class="form-control") }}
+                            {% if form.conyuge_curp.errors %}
+                                {% for error in form.conyuge_curp.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-4">
+                            {{ form.conyuge_email.label(class="form-label") }}
+                            {{ form.conyuge_email(class="form-control") }}
+                            {% if form.conyuge_email.errors %}
+                                {% for error in form.conyuge_email.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.conyuge_telefono.label(class="form-label") }}
+                            {{ form.conyuge_telefono(class="form-control") }}
+                            {% if form.conyuge_telefono.errors %}
+                                {% for error in form.conyuge_telefono.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.conyuge_celular.label(class="form-label") }}
+                            {{ form.conyuge_celular(class="form-control") }}
+                            {% if form.conyuge_celular.errors %}
+                                {% for error in form.conyuge_celular.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <h5 class="section-title">Información Laboral del Cónyuge</h5>
+                        <div class="col-md-6">
+                            {{ form.conyuge_nombre_empresa.label(class="form-label") }}
+                            {{ form.conyuge_nombre_empresa(class="form-control") }}
+                            {% if form.conyuge_nombre_empresa.errors %}
+                                {% for error in form.conyuge_nombre_empresa.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.conyuge_puesto.label(class="form-label") }}
+                            {{ form.conyuge_puesto(class="form-control") }}
+                            {% if form.conyuge_puesto.errors %}
+                                {% for error in form.conyuge_puesto.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.conyuge_antiguedad.label(class="form-label") }}
+                            {{ form.conyuge_antiguedad(class="form-control") }}
+                            {% if form.conyuge_antiguedad.errors %}
+                                {% for error in form.conyuge_antiguedad.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.conyuge_ingreso_mensual.label(class="form-label") }}
+                            {{ form.conyuge_ingreso_mensual(class="form-control") }}
+                            {% if form.conyuge_ingreso_mensual.errors %}
+                                {% for error in form.conyuge_ingreso_mensual.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Documentos -->
+                <div class="tab-pane fade" id="documentos" role="tabpanel">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <h4>Documentos del Cliente</h4>
+                            {% if client %}
+                            <div class="mb-4">
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="document-name" placeholder="Nombre del documento">
+                                    <button class="btn btn-primary" type="button" id="upload-button" disabled>Subir Archivo</button>
+                                </div>
+                                <input type="file" id="file-input" style="display: none;">
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table" id="documents-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre del Documento</th>
+                                            <th>Fecha de Subida</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for doc in client.documents %}
+                                        <tr>
+                                            <td>{{ doc.name }}</td>
+                                            <td>{{ doc.upload_date.strftime('%Y-%m-%d %H:%M:%S') if doc.upload_date else '' }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info preview-doc" data-id="{{ doc.id }}">
+                                                    <i class="fas fa-eye"></i> Ver
+                                                </button>
+                                                <button class="btn btn-sm btn-danger delete-doc" data-id="{{ doc.id }}">
+                                                    <i class="fas fa-trash"></i> Eliminar
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                Guarde el cliente primero para poder agregar documentos.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seguimiento -->
+                <div class="tab-pane fade" id="seguimiento" role="tabpanel">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="tipo_de_credito" class="form-label">Tipo de Crédito</label>
+                            {{ form.tipo_de_credito(class="form-select") }}
+                            {% if form.tipo_de_credito.errors %}
+                                {% for error in form.tipo_de_credito.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.estatus.label(class="form-label") }}
+                            {{ form.estatus(class="form-select") }}
+                            {% if form.estatus.errors %}
+                                {% for error in form.estatus.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.fecha_ultimo_contacto.label(class="form-label") }}
+                            {{ form.fecha_ultimo_contacto(class="form-control", type="date") }}
+                            {% if form.fecha_ultimo_contacto.errors %}
+                                {% for error in form.fecha_ultimo_contacto.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            {{ form.fecha_siguiente_contacto.label(class="form-label") }}
+                            {{ form.fecha_siguiente_contacto(class="form-control", type="date") }}
+                            {% if form.fecha_siguiente_contacto.errors %}
+                                {% for error in form.fecha_siguiente_contacto.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            {{ form.notas.label(class="form-label") }}
+                            {{ form.notas(class="form-control", rows="3") }}
+                            {% if form.notas.errors %}
+                                {% for error in form.notas.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            {{ form.notas_seguimiento.label(class="form-label") }}
+                            {{ form.notas_seguimiento(class="form-control", rows="3") }}
+                            {% if form.notas_seguimiento.errors %}
+                                {% for error in form.notas_seguimiento.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Guardar
+                    </button>
+                    <a href="{{ url_for('clients.index') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get client ID from data attribute if it exists
+        const clientIdElement = document.getElementById('client-data');
+        const clientId = clientIdElement ? clientIdElement.dataset.clientId : null;
+
+        // Form validation
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            });
+        }
+
+        // Marriage fields handling
+        const estadoCivilSelect = document.querySelector('#estado_civil');
+        const conyugeTab = document.querySelector('#conyuge-tab');
+        const regimenMatrimonialContainer = document.querySelector('#regimen_matrimonial-container');
+
+        function updateMarriageRelatedFields() {
+            if (estadoCivilSelect && conyugeTab && regimenMatrimonialContainer) {
+                const selectedValue = estadoCivilSelect.value;
+                if (selectedValue === 'casado') {
+                    conyugeTab.style.display = 'block';
+                    regimenMatrimonialContainer.style.display = 'block';
+                } else {
+                    conyugeTab.style.display = 'none';
+                    regimenMatrimonialContainer.style.display = 'none';
+                }
+            }
+        }
+
+        if (estadoCivilSelect) {
+            estadoCivilSelect.addEventListener('change', updateMarriageRelatedFields);
+            updateMarriageRelatedFields(); // Initialize on page load
+        }
+
+        // Credit type handling
+        const tipoCreditoSelect = document.querySelector('#tipo_de_credito');
+        const bancoContainer = document.querySelector('#banco-container');
+
+        function toggleBankoField() {
+            if (tipoCreditoSelect && bancoContainer) {
+                const bancoField = document.querySelector('#banco');
+                if (tipoCreditoSelect.value === 'credito_bancario') {
+                    bancoContainer.style.display = 'block';
+                    if (bancoField) {
+                        bancoField.setAttribute('required', '');
+                    }
+                } else {
+                    bancoContainer.style.display = 'none';
+                    if (bancoField) {
+                        bancoField.removeAttribute('required');
+                    }
+                }
+            }
+        }
+
+        if (tipoCreditoSelect) {
+            tipoCreditoSelect.addEventListener('change', toggleBankoField);
+            toggleBankoField(); // Initialize on page load
+        }
+
+        // Document upload functionality
+        const documentName = document.getElementById('document-name');
+        const uploadButton = document.getElementById('upload-button');
+        const fileInput = document.getElementById('file-input');
+        
+        if (documentName && uploadButton && fileInput) {
+            // Enable upload button only when document name is provided
+            documentName.addEventListener('input', function() {
+                uploadButton.disabled = !this.value.trim();
+            });
+
+            // Handle upload button click
+            uploadButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (documentName.value.trim()) {
+                    fileInput.click();
+                }
+            });
+
+            // Handle file selection
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    const formData = new FormData();
+                    formData.append('file', this.files[0]);
+                    formData.append('name', documentName.value.trim());
+                    if (clientId) {
+                        formData.append('client_id', clientId);
+                    }
+                    
+                    const csrfToken = document.querySelector('input[name="csrf_token"]');
+                    const headers = {};
+                    if (csrfToken) {
+                        headers['X-CSRFToken'] = csrfToken.value;
+                    }
+
+                    fetch('/clients/upload-document', {
+                        method: 'POST',
+                        body: formData,
+                        headers: headers
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert('Error al subir el documento: ' + (data.error || 'Error desconocido'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error al subir el documento');
+                    });
+                }
+            });
+        }
+    });
+</script>
+
+{% if client %}
+<div id="client-data" data-client-id="{{ client.id }}" style="display: none;"></div>
+{% endif %}
+
+{% endblock %}

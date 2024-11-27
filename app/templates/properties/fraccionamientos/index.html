@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Fraccionamientos</h1>
+        <a href="{{ url_for('properties.fraccionamiento_new') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo Fraccionamiento
+        </a>
+    </div>
+
+    <div class="row">
+        {% if fraccionamientos %}
+            {% for fraccionamiento in fraccionamientos %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    {% if fraccionamiento.logo %}
+                    <img src="{{ url_for('static', filename=fraccionamiento.logo) }}" class="card-img-top" alt="{{ fraccionamiento.nombre }}" style="height: 200px; object-fit: cover;">
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ fraccionamiento.nombre }}</h5>
+                        {% if fraccionamiento.ubicacion %}
+                        <p class="card-text">
+                            <i class="fas fa-map-marker-alt"></i> {{ fraccionamiento.ubicacion }}
+                        </p>
+                        {% endif %}
+                        {% if fraccionamiento.sembrado %}
+                        <div class="mb-3">
+                            {% if fraccionamiento.sembrado.endswith('.pdf') %}
+                            <a href="{{ url_for('static', filename=fraccionamiento.sembrado) }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-file-pdf"></i> Ver Plano General
+                            </a>
+                            {% else %}
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#sembradoModal{{ fraccionamiento.id }}">
+                                <i class="fas fa-map"></i> Ver Plano General
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <a href="{{ url_for('properties.paquetes_index', fraccionamiento_id=fraccionamiento.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-box"></i> Paquetes
+                            </a>
+                            <div>
+                                <a href="{{ url_for('properties.fraccionamiento_edit', id=fraccionamiento.id) }}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                                <form action="{{ url_for('properties.fraccionamiento_delete', id=fraccionamiento.id) }}" method="POST" class="d-inline" 
+                                    onsubmit="return confirm('¿Está seguro de que desea eliminar este fraccionamiento? Esta acción no se puede deshacer.');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if fraccionamiento.sembrado and not fraccionamiento.sembrado.endswith('.pdf') %}
+            <!-- Modal for Sembrado -->
+            <div class="modal fade" id="sembradoModal{{ fraccionamiento.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-map me-2"></i>
+                                Plano General - {{ fraccionamiento.nombre }}
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-0">
+                            <div class="sembrado-container position-relative" style="height: 80vh; overflow: hidden;">
+                                <div class="sembrado-controls position-absolute top-0 end-0 m-3 bg-white rounded shadow-sm p-2 z-index-1">
+                                    <button class="btn btn-sm btn-outline-secondary zoom-in">
+                                        <i class="fas fa-search-plus"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary zoom-out">
+                                        <i class="fas fa-search-minus"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary reset-zoom">
+                                        <i class="fas fa-compress-arrows-alt"></i>
+                                    </button>
+                                </div>
+                                <div class="sembrado-wrapper d-flex justify-content-center align-items-center h-100">
+                                    <img src="{{ url_for('static', filename=fraccionamiento.sembrado) }}" 
+                                         class="sembrado-image img-fluid"
+                                         alt="Plano General"
+                                         style="max-height: 100%; object-fit: contain;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <small class="text-muted me-auto">
+                                <i class="fas fa-info-circle"></i>
+                                Use los controles para hacer zoom y arrastre para moverse por el plano
+                            </small>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No hay fraccionamientos registrados.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize zoom functionality for each sembrado modal
+    document.querySelectorAll('.modal').forEach(modal => {
+        const img = modal.querySelector('.sembrado-image');
+        const wrapper = modal.querySelector('.sembrado-wrapper');
+        let scale = 1;
+        let panning = false;
+        let pointX = 0;
+        let pointY = 0;
+        let start = { x: 0, y: 0 };
+
+        function setTransform() {
+            wrapper.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+        }
+
+        // Zoom controls
+        modal.querySelector('.zoom-in').addEventListener('click', () => {
+            scale = Math.min(scale * 1.2, 4);
+            setTransform();
+        });
+
+        modal.querySelector('.zoom-out').addEventListener('click', () => {
+            scale = Math.max(scale / 1.2, 1);
+            setTransform();
+        });
+
+        modal.querySelector('.reset-zoom').addEventListener('click', () => {
+            scale = 1;
+            pointX = 0;
+            pointY = 0;
+            setTransform();
+        });
+
+        // Pan functionality
+        wrapper.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            start = { x: e.clientX - pointX, y: e.clientY - pointY };
+            panning = true;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!panning) return;
+            pointX = (e.clientX - start.x);
+            pointY = (e.clientY - start.y);
+            setTransform();
+        });
+
+        document.addEventListener('mouseup', () => {
+            panning = false;
+        });
+
+        // Reset on modal close
+        modal.addEventListener('hidden.bs.modal', () => {
+            scale = 1;
+            pointX = 0;
+            pointY = 0;
+            setTransform();
+        });
+    });
+});
+</script>
+{% endblock %}
+
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('properties.fraccionamientos_index') }}">Fraccionamientos</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('properties.paquetes_index', fraccionamiento_id=paquete.fraccionamiento.id) }}">{{ paquete.fraccionamiento.nombre }}</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('properties.lotes_index', paquete_id=paquete.id) }}">{{ paquete.nombre }}</a></li>
+            <li class="breadcrumb-item active">{{ 'Editar' if is_edit else 'Nuevo' }} Lote</li>
+        </ol>
+    </nav>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title mb-0">{{ 'Editar' if is_edit else 'Nuevo' }} Lote</h2>
+        </div>
+        <div class="card-body">
+            <form method="post" class="needs-validation" novalidate>
+                {{ form.hidden_tag() }}
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            {{ form.prototipo_id.label(class="form-label") }}
+                            {{ form.prototipo_id(class="form-select" + (" is-invalid" if form.prototipo_id.errors else "")) }}
+                            {% for error in form.prototipo_id.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mb-3">Ubicación</h5>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            {{ form.calle.label(class="form-label") }}
+                            {{ form.calle(class="form-control" + (" is-invalid" if form.calle.errors else "")) }}
+                            {% for error in form.calle.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            {{ form.numero_exterior.label(class="form-label") }}
+                            {{ form.numero_exterior(class="form-control" + (" is-invalid" if form.numero_exterior.errors else "")) }}
+                            {% for error in form.numero_exterior.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            {{ form.numero_interior.label(class="form-label") }}
+                            {{ form.numero_interior(class="form-control") }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ form.manzana.label(class="form-label") }}
+                            {{ form.manzana(class="form-control" + (" is-invalid" if form.manzana.errors else "")) }}
+                            {% for error in form.manzana.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ form.lote.label(class="form-label") }}
+                            {{ form.lote(class="form-control" + (" is-invalid" if form.lote.errors else "")) }}
+                            {% for error in form.lote.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mb-3">Características</h5>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ form.cuv.label(class="form-label") }}
+                            {{ form.cuv(class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ form.terreno.label(class="form-label") }}
+                            {{ form.terreno(class="form-control") }}
+                            <small class="form-text text-muted">En metros cuadrados</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ form.tipo_de_lote.label(class="form-label") }}
+                            {{ form.tipo_de_lote(class="form-select" + (" is-invalid" if form.tipo_de_lote.errors else "")) }}
+                            {% for error in form.tipo_de_lote.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ form.estado_del_inmueble.label(class="form-label") }}
+                            {{ form.estado_del_inmueble(class="form-select" + (" is-invalid" if form.estado_del_inmueble.errors else "")) }}
+                            {% for error in form.estado_del_inmueble.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            {{ form.precio.label(class="form-label") }}
+                            {{ form.precio(class="form-control" + (" is-invalid" if form.precio.errors else "")) }}
+                            {% for error in form.precio.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mb-3">Medidas y Colindancias</h5>
+                {% for i in range(1, 5) %}
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ form['orientacion_' ~ i].label(class="form-label") }}
+                            {{ form['orientacion_' ~ i](class="form-select") }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            {{ form['medidas_orientacion_' ~ i].label(class="form-label") }}
+                            {{ form['medidas_orientacion_' ~ i](class="form-control") }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form['colindancia_' ~ i].label(class="form-label") }}
+                            {{ form['colindancia_' ~ i](class="form-control") }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <div class="row">
+                    <div class="col-12">
+                        <a href="{{ url_for('properties.lotes_index', paquete_id=paquete.id) }}" class="btn btn-secondary">Cancelar</a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

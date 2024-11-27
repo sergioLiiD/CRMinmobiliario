@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('properties.fraccionamientos_index') }}">Fraccionamientos</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('properties.paquetes_index', fraccionamiento_id=paquete.fraccionamiento.id) }}">{{ paquete.fraccionamiento.nombre }}</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('properties.lotes_index', paquete_id=paquete.id) }}">{{ paquete.nombre }}</a></li>
+            <li class="breadcrumb-item active">Carga Masiva de Lotes</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Carga Masiva de Lotes</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.file.label(class="form-label") }}
+                            {{ form.file(class="form-control" + (" is-invalid" if form.file.errors else "")) }}
+                            {% for error in form.file.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <a href="{{ url_for('static', filename='templates/lotes_template.csv') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-download"></i> Descargar Plantilla
+                            </a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Instrucciones</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Campos Requeridos:</h6>
+                    <ul class="mb-3">
+                        <li>prototipo_id</li>
+                        <li>calle</li>
+                        <li>numero_exterior</li>
+                        <li>manzana</li>
+                        <li>lote</li>
+                        <li>tipo_de_lote</li>
+                        <li>estado_del_inmueble</li>
+                        <li>precio</li>
+                    </ul>
+
+                    <h6>Campos Opcionales:</h6>
+                    <ul class="mb-3">
+                        <li>numero_interior</li>
+                        <li>cuv</li>
+                        <li>terreno</li>
+                        <li>orientacion_[1-4]</li>
+                        <li>medidas_orientacion_[1-4]</li>
+                        <li>colindancia_[1-4]</li>
+                    </ul>
+
+                    <h6>Notas:</h6>
+                    <ul>
+                        <li>Use el archivo de plantilla como guía</li>
+                        <li>El archivo debe estar en formato CSV</li>
+                        <li>Los campos vacíos pueden dejarse en blanco</li>
+                        <li>Use punto (.) como separador decimal</li>
+                        <li>No use separadores de miles</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
