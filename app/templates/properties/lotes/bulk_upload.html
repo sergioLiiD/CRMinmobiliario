@@ -22,9 +22,17 @@
                         {{ form.hidden_tag() }}
                         
                         <div class="mb-3">
-                            {{ form.file.label(class="form-label") }}
-                            {{ form.file(class="form-control" + (" is-invalid" if form.file.errors else "")) }}
-                            {% for error in form.file.errors %}
+                            {{ form.csv_file.label(class="form-label") }}
+                            {{ form.csv_file(class="form-control" + (" is-invalid" if form.csv_file.errors else "")) }}
+                            {% for error in form.csv_file.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.prototipo.label(class="form-label") }}
+                            {{ form.prototipo(class="form-control" + (" is-invalid" if form.prototipo.errors else "")) }}
+                            {% for error in form.prototipo.errors %}
                             <div class="invalid-feedback">{{ error }}</div>
                             {% endfor %}
                         </div>

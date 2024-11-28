@@ -1,593 +1,131 @@
 {% extends "base.html" %}
 
 {% block content %}
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" id="csrf_token">
-<div class="container mt-4">
+<div class="container-fluid">
     <div class="row mb-4">
         <div class="col">
-            <form id="filterForm" class="row g-3">
-                <div class="col-md-4">
-                    {{ form.fraccionamiento.label(class="form-label") }}
-                    {{ form.fraccionamiento(class="form-select") }}
+            <form id="filterForm" method="GET" action="{{ url_for('properties.lotes_public') }}">
+                {{ form.csrf_token }}
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="fraccionamiento">Fraccionamiento</label>
+                        {{ form.fraccionamiento(class="form-select") }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="paquete">Paquete</label>
+                        {{ form.paquete(class="form-select") }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="estado">Estado</label>
+                        {{ form.estado(class="form-select") }}
+                    </div>
                 </div>
-                <div class="col-md-4">
-                    {{ form.paquete.label(class="form-label") }}
-                    {{ form.paquete(class="form-select") }}
-                </div>
-                <div class="col-md-4">
-                    {{ form.estado.label(class="form-label") }}
-                    {{ form.estado(class="form-select") }}
+                <div class="row">
+                    <div class="col text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
-    {% if lotes %}
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Manzana</th>
-                    <th>Lote</th>
-                    <th>Prototipo</th>
-                    <th>Terreno</th>
-                    <th>Precio</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for lote in lotes %}
-                <tr>
-                    <td>{{ lote.manzana }}</td>
-                    <td>{{ lote.lote }}</td>
-                    <td>{{ lote.prototipo.nombre_prototipo if lote.prototipo else 'N/A' }}</td>
-                    <td>{{ lote.terreno }} m²</td>
-                    <td>${{ "{:,.2f}".format(lote.precio) }}</td>
-                    <td>
-                        <span class="badge {% if lote.estado_del_inmueble == 'Libre' %}bg-success{% elif lote.estado_del_inmueble == 'Apartado' %}bg-warning{% else %}bg-secondary{% endif %}">
-                            {{ lote.estado_del_inmueble }}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-info btn-sm" onclick="showLotDetails('{{ lote.id }}')">
-                                <i class="fas fa-info-circle"></i> Detalles
-                            </button>
+    <div class="row">
+        <div class="col-12">
+            <h1 class="my-4">Lotes Disponibles</h1>
+            
+            {% if lotes %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Manzana</th>
+                        <th>Lote</th>
+                        <th>Prototipo</th>
+                        <th>Terreno</th>
+                        <th>Precio</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lote in lotes %}
+                    <tr>
+                        <td>{{ lote.id }}</td>
+                        <td>{{ lote.manzana }}</td>
+                        <td>{{ lote.lote }}</td>
+                        <td>{{ lote.prototipo.nombre_prototipo if lote.prototipo else 'N/A' }}</td>
+                        <td>{{ lote.terreno }} m²</td>
+                        <td>${{ "{:,.2f}".format(lote.precio) }}</td>
+                        <td>
                             {% if lote.estado_del_inmueble == 'Libre' %}
-                            <button type="button" class="btn btn-primary btn-sm" onclick="showAssignmentModal('{{ lote.id }}')">
-                                <i class="fas fa-user-plus"></i> Apartar
-                            </button>
+                                <span class="badge bg-success">{{ lote.estado_del_inmueble }}</span>
                             {% elif lote.estado_del_inmueble == 'Apartado' %}
-                            <button type="button" class="btn btn-danger btn-sm" onclick="showReleaseModal('{{ lote.id }}')">
-                                <i class="fas fa-times"></i> Cancelar Apartado
-                            </button>
+                                <span class="badge bg-warning">{{ lote.estado_del_inmueble }}</span>
+                            {% elif lote.estado_del_inmueble == 'Titulado' %}
+                                <span class="badge bg-danger">{{ lote.estado_del_inmueble }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ lote.estado_del_inmueble }}</span>
                             {% endif %}
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="showLotHistory('{{ lote.id }}')">
-                                <i class="fas fa-history"></i> Historial
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="alert alert-info">
-        Seleccione un fraccionamiento para ver los lotes disponibles
-    </div>
-    {% endif %}
-</div>
-
-<!-- Assignment Modal -->
-<div class="modal fade" id="assignmentModal" tabindex="-1" aria-labelledby="assignmentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="assignmentModalLabel">Apartar Lote</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-danger" id="assignmentError" style="display: none;"></div>
-                <form id="assignmentForm">
-                    <div class="mb-3">
-                        <label for="clientSelect" class="form-label">Cliente *</label>
-                        <select class="form-select" id="clientSelect" required>
-                            <option value="">Seleccione un cliente</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="assignmentNotes" class="form-label">Notas</label>
-                        <textarea class="form-control" id="assignmentNotes" rows="3"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="submitAssignment()">Confirmar Apartado</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Release Modal -->
-<div class="modal fade" id="releaseModal" tabindex="-1" aria-labelledby="releaseModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="releaseModalLabel">Cancelar Apartado de Lote</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-danger" id="releaseError" style="display: none;"></div>
-                <form id="releaseForm">
-                    <div class="mb-3">
-                        <label for="releaseReason" class="form-label">Motivo de Cancelación *</label>
-                        <select class="form-select" id="releaseReason" required>
-                            <option value="">Seleccione un motivo</option>
-                            <option value="cancelacion_cliente">Cancelación por Cliente</option>
-                            <option value="falta_pago">Falta de Pago</option>
-                            <option value="documentacion_incompleta">Documentación Incompleta</option>
-                            <option value="otro">Otro</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="releaseNotes" class="form-label">Notas Adicionales</label>
-                        <textarea class="form-control" id="releaseNotes" rows="3"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-danger" onclick="submitRelease()">Confirmar Cancelación</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- History Modal -->
-<div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="historyModalLabel">Historial del Lote</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="noHistoryMessage" style="display: none;" class="alert alert-info">
-                    Este lote no tiene historial de asignaciones.
-                </div>
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Fecha Inicio</th>
-                                <th>Fecha Fin</th>
-                                <th>Cliente</th>
-                                <th>Estado</th>
-                                <th>Usuario</th>
-                                <th>Motivo</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyTableBody">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Function to update paquete options based on selected fraccionamiento
-    function updatePaquetes(fraccionamientoId, selectedPaqueteId) {
-        if (!fraccionamientoId) return;
-        
-        fetch(`{{ url_for('properties.lotes_public') }}?fraccionamiento_id=${fraccionamientoId}`)
-            .then(response => response.json())
-            .then(data => {
-                const paqueteSelect = document.getElementById('paquete');
-                paqueteSelect.innerHTML = '<option value="0">Todos los paquetes</option>';
-                
-                data.forEach(([id, nombre]) => {
-                    const option = document.createElement('option');
-                    option.value = id;
-                    option.textContent = nombre;
-                    if (selectedPaqueteId && id == selectedPaqueteId) {
-                        option.selected = true;
-                    }
-                    paqueteSelect.appendChild(option);
-                });
-            });
-    }
-    
-    // Add event listeners to form controls
-    const form = document.getElementById('filterForm');
-    const fraccionamientoSelect = document.getElementById('fraccionamiento');
-    const paqueteSelect = document.getElementById('paquete');
-    const estadoSelect = document.getElementById('estado');
-    
-    // If fraccionamiento is selected on page load, update paquetes
-    if (fraccionamientoSelect.value) {
-        updatePaquetes(fraccionamientoSelect.value, paqueteSelect.value);
-    }
-    
-    fraccionamientoSelect.addEventListener('change', function() {
-        updatePaquetes(this.value);
-        form.submit();
-    });
-    
-    paqueteSelect.addEventListener('change', function() {
-        form.submit();
-    });
-    
-    estadoSelect.addEventListener('change', function() {
-        form.submit();
-    });
-});
-
-let currentLotId = null;
-
-function showAssignmentModal(loteId) {
-    currentLotId = loteId;
-    
-    // Clear previous form data
-    document.getElementById('clientSelect').value = '';
-    document.getElementById('assignmentNotes').value = '';
-    document.getElementById('assignmentError').style.display = 'none';
-    
-    // Load assignable clients
-    loadAssignableClients();
-    
-    // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('assignmentModal'));
-    modal.show();
-}
-
-function loadAssignableClients() {
-    const csrfToken = document.querySelector('#csrf_token').value;
-    console.log('Loading assignable clients...');
-    
-    fetch('/properties/api/clients/assignable', {
-        method: 'GET',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json'
-        },
-        credentials: 'same-origin'
-    })
-    .then(response => {
-        if (!response.ok) {
-            if (response.status === 403) {
-                throw new Error('Error de autenticación. Por favor recargue la página e intente nuevamente.');
-            }
-            throw new Error('Error al cargar los clientes. Por favor intente nuevamente.');
-        }
-        return response.json();
-    })
-    .then(clients => {
-        const clientSelect = document.getElementById('clientSelect');
-        clientSelect.innerHTML = '<option value="">Seleccione un cliente</option>';
-        
-        clients.forEach(client => {
-            const option = document.createElement('option');
-            option.value = client.id;
-            option.textContent = `${client.nombre_completo} - ${client.celular || 'Sin teléfono'}`;
-            clientSelect.appendChild(option);
-        });
-    })
-    .catch(error => {
-        console.error('Error loading clients:', error);
-        const errorDiv = document.getElementById('assignmentError');
-        errorDiv.textContent = error.message || 'Error al cargar la lista de clientes. Por favor intente nuevamente.';
-        errorDiv.style.display = 'block';
-    });
-}
-
-function submitAssignment() {
-    const csrfToken = document.querySelector('#csrf_token').value;
-    const clientId = document.getElementById('clientSelect').value;
-    const notes = document.getElementById('assignmentNotes').value;
-    const errorDiv = document.getElementById('assignmentError');
-    
-    if (!clientId) {
-        errorDiv.textContent = 'Por favor seleccione un cliente';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    
-    // Clear previous error
-    errorDiv.style.display = 'none';
-    
-    fetch(`/properties/api/lotes/${currentLotId}/assign`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        },
-        body: JSON.stringify({
-            client_id: clientId,
-            notas: notes
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            if (response.status === 403) {
-                throw new Error('No tiene permiso para apartar este lote');
-            }
-            return response.json().then(err => Promise.reject(err));
-        }
-        return response.json();
-    })
-    .then(data => {
-        // Hide assignment modal
-        const assignmentModal = document.getElementById('assignmentModal');
-        const bsAssignModal = bootstrap.Modal.getInstance(assignmentModal);
-        bsAssignModal.hide();
-        
-        // Show success message
-        showAlert('success', 'Lote apartado exitosamente');
-        
-        // Refresh the page to show updated status
-        window.location.reload();
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        errorDiv.textContent = error.message || 'Error al apartar el lote. Por favor intente nuevamente.';
-        errorDiv.style.display = 'block';
-    });
-}
-
-function showLotHistory(loteId) {
-    fetch(`/properties/api/lotes/${loteId}/history`)
-        .then(response => response.json())
-        .then(data => {
-            const tbody = document.getElementById('historyTableBody');
-            tbody.innerHTML = '';
-            
-            if (data.length === 0) {
-                document.getElementById('noHistoryMessage').style.display = 'block';
-                return;
-            }
-            
-            document.getElementById('noHistoryMessage').style.display = 'none';
-            data.forEach(record => {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${formatDate(record.fecha_inicio)}</td>
-                    <td>${formatDate(record.fecha_fin)}</td>
-                    <td>${record.client_name}</td>
-                    <td>${record.estado}</td>
-                    <td>${record.user_name}</td>
-                    <td>${record.motivo_cambio}</td>
-                `;
-            });
-            
-            $('#historyModal').modal('show');
-        })
-        .catch(error => {
-            console.error('Error loading history:', error);
-            showAlert('error', 'Error al cargar el historial del lote.');
-        });
-}
-
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleString('es-MX', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-function showLotDetails(loteId) {
-    // Remove any existing details modal
-    const existingModal = document.getElementById('lotDetailsModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-
-    const url = `/properties/api/lotes/${loteId}/details`;
-    const csrfToken = document.getElementById('csrf_token').value;
-
-    console.log('Fetching lot details from:', url);
-
-    fetch(url, {
-        method: 'GET',
-        headers: {
-            'X-CSRFToken': csrfToken,
-            'Accept': 'application/json'
-        },
-        credentials: 'same-origin'
-    })
-    .then(response => {
-        console.log('Response status:', response.status);
-        if (!response.ok) {
-            return response.text().then(text => {
-                console.error('Error response:', text);
-                throw new Error(`HTTP error! status: ${response.status}`);
-            });
-        }
-        return response.json();
-    })
-    .then(data => {
-        // Create modal HTML
-        const modalHtml = `
-            <div class="modal fade" id="lotDetailsModal" tabindex="-1" aria-labelledby="lotDetailsModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="lotDetailsModalLabel">Detalles del Lote</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6>Información General</h6>
-                                    <table class="table table-sm">
-                                        <tr>
-                                            <th>Número de Lote:</th>
-                                            <td>${data.numero_lote}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Manzana:</th>
-                                            <td>${data.manzana}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Superficie:</th>
-                                            <td>${data.superficie} m²</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Precio:</th>
-                                            <td>$${data.precio.toLocaleString('es-MX')}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Estado:</th>
-                                            <td>${data.estado}</td>
-                                        </tr>
-                                        ${data.prototipo ? `
-                                        <tr>
-                                            <th>Prototipo:</th>
-                                            <td>${data.prototipo.nombre}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Superficie Construcción:</th>
-                                            <td>${data.prototipo.superficie} m²</td>
-                                        </tr>
-                                        ` : ''}
-                                    </table>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6>Información del Cliente</h6>
-                                    <table class="table table-sm">
-                                        ${data.cliente ? `
-                                            <tr>
-                                                <th>Nombre:</th>
-                                                <td>${data.cliente.nombre_completo}</td>
-                                            </tr>
-                                            <tr>
-                                                <th>Teléfono:</th>
-                                                <td>${data.cliente.telefono || 'N/A'}</td>
-                                            </tr>
-                                            <tr>
-                                                <th>Email:</th>
-                                                <td>${data.cliente.email || 'N/A'}</td>
-                                            </tr>
-                                        ` : '<tr><td colspan="2">Sin cliente asignado</td></tr>'}
-                                    </table>
-                                </div>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-info lot-details-trigger" data-lote-id="{{ lote.id }}">
+                                    <i class="fas fa-info-circle"></i> Detalles
+                                </button>
+                                <button class="btn btn-warning lot-status-change-trigger" 
+                                        data-lote-id="{{ lote.id }}" 
+                                        data-current-status="{{ lote.estado_del_inmueble }}">
+                                    <i class="fas fa-exchange-alt"></i> Cambiar Estado
+                                </button>
                             </div>
-                            <div class="row mt-3">
-                                <div class="col-12">
-                                    <button type="button" class="btn btn-info btn-sm" onclick="showLotHistory(${loteId})">
-                                        <i class="fas fa-history"></i> Ver Historial
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                        </div>
-                    </div>
-                </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="alert alert-info">
+                Seleccione un fraccionamiento para ver los lotes disponibles
             </div>
-        `;
-
-        // Add modal to document
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('lotDetailsModal'));
-        modal.show();
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showAlert('error', 'Error al cargar los detalles del lote');
-    });
-}
-
-let currentLotIdToRelease = null;
-
-function showReleaseModal(loteId) {
-    currentLotIdToRelease = loteId;
-    const modal = new bootstrap.Modal(document.getElementById('releaseModal'));
-    modal.show();
-}
-
-function submitRelease() {
-    const csrfToken = document.querySelector('#csrf_token').value;
-    const reason = document.getElementById('releaseReason').value;
-    const notes = document.getElementById('releaseNotes').value;
-    const errorDiv = document.getElementById('releaseError');
-    
-    if (!reason) {
-        errorDiv.textContent = 'Por favor seleccione un motivo de cancelación';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    
-    fetch(`/properties/api/lotes/${currentLotIdToRelease}/release`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        },
-        body: JSON.stringify({
-            motivo: reason,
-            notas: notes
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            if (response.status === 403) {
-                throw new Error('No tiene permiso para cancelar este apartado');
-            }
-            return response.json().then(err => Promise.reject(err));
-        }
-        return response.json();
-    })
-    .then(data => {
-        // Hide release modal
-        const releaseModal = document.getElementById('releaseModal');
-        const bsReleaseModal = bootstrap.Modal.getInstance(releaseModal);
-        bsReleaseModal.hide();
-        
-        // Show success message
-        showAlert('success', 'Apartado cancelado exitosamente');
-        
-        // Refresh the page to show updated status
-        window.location.reload();
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        errorDiv.textContent = error.message || 'Error al cancelar el apartado. Por favor intente nuevamente.';
-        errorDiv.style.display = 'block';
-    });
-}
-
-function showAlert(type, message) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
-    alertDiv.style.zIndex = '1050';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    document.body.appendChild(alertDiv);
-    
-    // Remove the alert after 5 seconds
-    setTimeout(() => {
-        alertDiv.remove();
-    }, 5000);
-}
-</script>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/lotes.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Populate paquete dropdown based on selected fraccionamiento
+    const fraccionamientoSelect = document.getElementById('fraccionamiento');
+    const paqueteSelect = document.getElementById('paquete');
+
+    fraccionamientoSelect.addEventListener('change', function() {
+        const selectedFraccionamiento = this.value;
+        
+        // Reset paquete dropdown
+        paqueteSelect.innerHTML = '<option value="">Seleccionar Paquete</option>';
+        
+        // If a fraccionamiento is selected, fetch its paquetes
+        if (selectedFraccionamiento) {
+            fetch(`/properties/paquetes/${selectedFraccionamiento}`)
+                .then(response => response.json())
+                .then(paquetes => {
+                    paquetes.forEach(paquete => {
+                        const option = document.createElement('option');
+                        option.value = paquete.id;
+                        option.textContent = paquete.nombre;
+                        paqueteSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching paquetes:', error);
+                });
+        }
+    });
+});
+</script>
 {% endblock %}

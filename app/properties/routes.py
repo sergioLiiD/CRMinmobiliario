@@ -1,10 +1,11 @@
 import os
 from flask import render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
+from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 from . import bp
 from .forms import PrototipoForm, FraccionamientoForm, PaqueteForm, LoteForm, LoteBulkUploadForm, LoteFilterForm
-from .models import Prototipo, PrototipoImagen, Fraccionamiento, Paquete, Lote, LoteAsignacion
+from .models import Prototipo, PrototipoImagen, Fraccionamiento, Paquete, Lote, LoteAsignacion, LoteAsignacionHistorial, LoteStatusChangeLog
 from app.clients.models import Client
 from app.database import db
 from app.auth.decorators import admin_required
@@ -65,13 +66,13 @@ def handle_image_upload(file, prototipo_id):
             os.remove(filepath)  # Clean up file if database operation fails
         raise IOError(f"Error al procesar archivo {file.filename}: {str(e)}")
 
-@bp.route('/properties/prototipos')
+@bp.route('/prototipos')
 @login_required
 def prototipos_index():
     prototipos = Prototipo.query.order_by(Prototipo.nombre_prototipo).all()
     return render_template('properties/prototipos/index.html', prototipos=prototipos)
 
-@bp.route('/properties/prototipos/nuevo', methods=['GET', 'POST'])
+@bp.route('/prototipos/nuevo', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def prototipo_nuevo():
@@ -131,7 +132,7 @@ def prototipo_nuevo():
     
     return render_template('properties/prototipos/form.html', form=form, title='Nuevo Prototipo')
 
-@bp.route('/properties/prototipos/<int:id>/editar', methods=['GET', 'POST'])
+@bp.route('/prototipos/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def prototipo_editar(id):
@@ -198,7 +199,7 @@ def prototipo_editar(id):
                          imagenes=imagenes,
                          title='Editar Prototipo')
 
-@bp.route('/properties/prototipos/<int:id>/eliminar', methods=['POST'])
+@bp.route('/prototipos/<int:id>/eliminar', methods=['POST'])
 @login_required
 @admin_required
 def prototipo_eliminar(id):
@@ -218,7 +219,7 @@ def prototipo_eliminar(id):
     flash('Prototipo eliminado exitosamente.', 'success')
     return redirect(url_for('properties.prototipos_index'))
 
-@bp.route('/properties/prototipos/imagen/<int:id>/eliminar', methods=['POST'])
+@bp.route('/prototipos/imagen/<int:id>/eliminar', methods=['POST'])
 @login_required
 @admin_required
 def prototipo_imagen_eliminar(id):
@@ -247,13 +248,13 @@ def prototipo_imagen_eliminar(id):
     return redirect(url_for('properties.prototipo_editar', id=prototipo_id))
 
 # Fraccionamiento routes
-@bp.route('/properties/fraccionamientos')
+@bp.route('/fraccionamientos')
 @login_required
 def fraccionamientos_index():
     fraccionamientos = Fraccionamiento.query.all()
     return render_template('properties/fraccionamientos/index.html', fraccionamientos=fraccionamientos)
 
-@bp.route('/properties/fraccionamientos/new', methods=['GET', 'POST'])
+@bp.route('/fraccionamientos/new', methods=['GET', 'POST'])
 @login_required
 def fraccionamiento_new():
     form = FraccionamientoForm()
@@ -283,7 +284,7 @@ def fraccionamiento_new():
         return redirect(url_for('properties.fraccionamientos_index'))
     return render_template('properties/fraccionamientos/form.html', form=form)
 
-@bp.route('/properties/fraccionamientos/<int:id>/edit', methods=['GET', 'POST'])
+@bp.route('/fraccionamientos/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 def fraccionamiento_edit(id):
     fraccionamiento = Fraccionamiento.query.get_or_404(id)
@@ -320,7 +321,7 @@ def fraccionamiento_edit(id):
                          form=form, 
                          fraccionamiento=fraccionamiento)
 
-@bp.route('/properties/fraccionamientos/<int:id>/delete', methods=['POST'])
+@bp.route('/fraccionamientos/<int:id>/delete', methods=['POST'])
 @login_required
 def fraccionamiento_delete(id):
     fraccionamiento = Fraccionamiento.query.get_or_404(id)
@@ -337,7 +338,7 @@ def fraccionamiento_delete(id):
     return redirect(url_for('properties.fraccionamientos_index'))
 
 # Paquete routes
-@bp.route('/properties/fraccionamientos/<int:fraccionamiento_id>/paquetes')
+@bp.route('/fraccionamientos/<int:fraccionamiento_id>/paquetes')
 @login_required
 def paquetes_index(fraccionamiento_id):
     fraccionamiento = Fraccionamiento.query.get_or_404(fraccionamiento_id)
@@ -345,7 +346,7 @@ def paquetes_index(fraccionamiento_id):
                          fraccionamiento=fraccionamiento,
                          paquetes=fraccionamiento.paquetes)
 
-@bp.route('/properties/fraccionamientos/<int:fraccionamiento_id>/paquetes/new', methods=['GET', 'POST'])
+@bp.route('/fraccionamientos/<int:fraccionamiento_id>/paquetes/new', methods=['GET', 'POST'])
 @login_required
 def paquete_new(fraccionamiento_id):
     fraccionamiento = Fraccionamiento.query.get_or_404(fraccionamiento_id)
@@ -366,7 +367,7 @@ def paquete_new(fraccionamiento_id):
                          fraccionamiento=fraccionamiento)
 
 # Lote routes
-@bp.route('/properties/paquetes/<int:paquete_id>/lotes')
+@bp.route('/paquetes/<int:paquete_id>/lotes')
 @login_required
 def lotes_index(paquete_id):
     paquete = Paquete.query.get_or_404(paquete_id)
@@ -374,7 +375,7 @@ def lotes_index(paquete_id):
                          paquete=paquete,
                          lotes=paquete.lotes)
 
-@bp.route('/properties/paquetes/<int:paquete_id>/lotes/new', methods=['GET', 'POST'])
+@bp.route('/paquetes/<int:paquete_id>/lotes/new', methods=['GET', 'POST'])
 @login_required
 def lote_new(paquete_id):
     paquete = Paquete.query.get_or_404(paquete_id)
@@ -423,7 +424,7 @@ def lote_new(paquete_id):
                          form=form, 
                          paquete=paquete)
 
-@bp.route('/properties/lotes/<int:lote_id>/edit', methods=['GET', 'POST'])
+@bp.route('/lotes/<int:lote_id>/edit', methods=['GET', 'POST'])
 @login_required
 def lote_edit(lote_id):
     lote = Lote.query.get_or_404(lote_id)
@@ -485,140 +486,246 @@ def lote_edit(lote_id):
                          paquete=lote.paquete,
                          is_edit=True)
 
-@bp.route('/properties/paquetes/<int:paquete_id>/lotes/bulk-upload', methods=['GET', 'POST'])
+@bp.route('/paquetes/<int:paquete_id>/lotes/bulk-upload', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def lotes_bulk_upload(paquete_id):
+    """
+    Bulk upload lots from a CSV file with robust Spanish character support
+    """
     paquete = Paquete.query.get_or_404(paquete_id)
     form = LoteBulkUploadForm()
     
     if form.validate_on_submit():
         try:
-            # Read CSV file
-            csv_file = form.file.data
-            stream = io.StringIO(csv_file.stream.read().decode("UTF8"), newline=None)
-            csv_reader = csv.DictReader(stream)
+            # Get the uploaded file
+            csv_file = form.csv_file.data
             
-            # Validate headers
-            required_headers = ['prototipo_id', 'calle', 'numero_exterior', 'manzana', 'lote', 'tipo_de_lote', 'estado_del_inmueble', 'precio']
-            headers = csv_reader.fieldnames
+            # Prioritize encodings for Spanish text
+            encodings_to_try = ['latin-1', 'utf-8-sig', 'utf-8', 'cp1252']
             
-            if not all(header in headers for header in required_headers):
-                flash('El archivo CSV no tiene todas las columnas requeridas.', 'error')
-                return redirect(url_for('properties.lotes_index', paquete_id=paquete_id))
+            # Detailed file information logging
+            current_app.logger.info(f"Bulk Upload - File Name: {csv_file.filename}")
+            current_app.logger.info(f"Bulk Upload - Content Type: {csv_file.content_type}")
             
-            lotes_created = 0
-            errors = []
+            # Validate file
+            if not csv_file:
+                flash('No se ha seleccionado ningún archivo.', 'danger')
+                return render_template('properties/lotes/bulk_upload.html', form=form, paquete=paquete)
             
-            for row in csv_reader:
+            # Read the file with different encodings
+            successful_read = False
+            csv_content = None
+            used_encoding = None
+            
+            for encoding in encodings_to_try:
                 try:
-                    # Convert empty strings to None
-                    for key in row:
-                        if row[key] == '':
-                            row[key] = None
+                    # Reset file pointer
+                    csv_file.seek(0)
                     
-                    # Create new Lote
-                    lote = Lote(
-                        paquete_id=paquete_id,
-                        prototipo_id=int(row['prototipo_id']),
-                        calle=row['calle'],
-                        numero_exterior=row['numero_exterior'],
-                        numero_interior=row.get('numero_interior'),
-                        manzana=row['manzana'],
-                        lote=row['lote'],
-                        cuv=row.get('cuv'),
-                        terreno=float(row['terreno']) if row.get('terreno') else None,
-                        tipo_de_lote=row['tipo_de_lote'],
-                        estado_del_inmueble=row['estado_del_inmueble'],
-                        precio=float(row['precio']),
-                        orientacion_1=row.get('orientacion_1'),
-                        medidas_orientacion_1=row.get('medidas_orientacion_1'),
-                        colindancia_1=row.get('colindancia_1'),
-                        orientacion_2=row.get('orientacion_2'),
-                        medidas_orientacion_2=row.get('medidas_orientacion_2'),
-                        colindancia_2=row.get('colindancia_2'),
-                        orientacion_3=row.get('orientacion_3'),
-                        medidas_orientacion_3=row.get('medidas_orientacion_3'),
-                        colindancia_3=row.get('colindancia_3'),
-                        orientacion_4=row.get('orientacion_4'),
-                        medidas_orientacion_4=row.get('medidas_orientacion_4'),
-                        colindancia_4=row.get('colindancia_4')
-                    )
-                    db.session.add(lote)
-                    lotes_created += 1
+                    # Read the file content
+                    file_content = csv_file.stream.read()
+                    current_app.logger.info(f"Attempting to decode with {encoding}")
+                    
+                    # Decode the content
+                    decoded_content = file_content.decode(encoding)
+                    
+                    # Create CSV reader
+                    csv_reader = csv.DictReader(io.StringIO(decoded_content))
+                    
+                    # Log fieldnames
+                    current_app.logger.info(f"Fieldnames detected: {csv_reader.fieldnames}")
+                    current_app.logger.info(f"Raw fieldnames: {[repr(field) for field in csv_reader.fieldnames]}")
+                    
+                    # Validate headers
+                    required_headers = [
+                        'prototipo_id', 'calle', 'numero_exterior', 'numero_interior', 
+                        'manzana', 'lote', 'cuv', 'terreno', 'tipo_de_lote', 
+                        'estado_del_inmueble', 'precio', 'orientacion_1', 
+                        'medidas_orientacion_1', 'colindancia_1', 'orientacion_2', 
+                        'medidas_orientacion_2', 'colindancia_2', 'orientacion_3', 
+                        'medidas_orientacion_3', 'colindancia_3', 'orientacion_4', 
+                        'medidas_orientacion_4', 'colindancia_4'
+                    ]
+                    
+                    # Check if all required headers are present
+                    missing_headers = [header for header in required_headers if header not in csv_reader.fieldnames]
+                    current_app.logger.info(f"Missing headers check: {missing_headers}")
+                    current_app.logger.info(f"Comparison: {[header in csv_reader.fieldnames for header in required_headers]}")
+                    
+                    if missing_headers:
+                        current_app.logger.error(f"Missing headers: {missing_headers}")
+                        flash(f'Faltan las siguientes columnas: {", ".join(missing_headers)}', 'danger')
+                        return render_template('properties/lotes/bulk_upload.html', form=form, paquete=paquete)
+                    
+                    # Store successful read details
+                    successful_read = True
+                    csv_content = list(csv_reader)
+                    used_encoding = encoding
+                    break
+                
+                except UnicodeDecodeError as ude:
+                    current_app.logger.warning(f"Decoding error with {encoding}: {str(ude)}")
+                    continue
                 except Exception as e:
-                    errors.append(f"Error en la fila {csv_reader.line_num}: {str(e)}")
+                    current_app.logger.error(f"Unexpected error with {encoding}: {str(e)}")
+                    continue
             
-            if errors:
-                db.session.rollback()
-                for error in errors:
-                    flash(error, 'error')
-            else:
+            # If no encoding worked
+            if not successful_read:
+                flash(f'No se pudo decodificar el archivo. Encodings probados: {encodings_to_try}', 'danger')
+                return render_template('properties/lotes/bulk_upload.html', form=form, paquete=paquete)
+            
+            current_app.logger.info(f"Successfully read file with encoding: {used_encoding}")
+            current_app.logger.info(f"Total rows to process: {len(csv_content)}")
+            
+            # Process the CSV
+            successful_uploads = 0
+            failed_uploads = 0
+            error_details = []
+            
+            for row_num, row in enumerate(csv_content, start=2):  # start=2 because first row is headers
+                try:
+                    # Validate and clean data
+                    cleaned_row = {k: v.strip() if v else None for k, v in row.items()}
+                    
+                    # Create new lot
+                    lote = Lote(
+                        paquete_id=paquete.id,
+                        prototipo_id=int(cleaned_row.get('prototipo_id')),
+                        calle=cleaned_row.get('calle') or '',
+                        numero_exterior=int(cleaned_row.get('numero_exterior') or 0),
+                        numero_interior=cleaned_row.get('numero_interior'),
+                        manzana=cleaned_row.get('manzana') or '',
+                        lote=cleaned_row.get('lote') or '',
+                        cuv=cleaned_row.get('cuv'),
+                        terreno=float(cleaned_row.get('terreno') or 0),
+                        tipo_de_lote=cleaned_row.get('tipo_de_lote') or 'Regular',
+                        estado_del_inmueble=cleaned_row.get('estado_del_inmueble') or 'Libre',
+                        precio=float(cleaned_row.get('precio') or 0),
+                        orientacion_1=cleaned_row.get('orientacion_1'),
+                        medidas_orientacion_1=cleaned_row.get('medidas_orientacion_1'),
+                        colindancia_1=cleaned_row.get('colindancia_1'),
+                        orientacion_2=cleaned_row.get('orientacion_2'),
+                        medidas_orientacion_2=cleaned_row.get('medidas_orientacion_2'),
+                        colindancia_2=cleaned_row.get('colindancia_2'),
+                        orientacion_3=cleaned_row.get('orientacion_3'),
+                        medidas_orientacion_3=cleaned_row.get('medidas_orientacion_3'),
+                        colindancia_3=cleaned_row.get('colindancia_3'),
+                        orientacion_4=cleaned_row.get('orientacion_4'),
+                        medidas_orientacion_4=cleaned_row.get('medidas_orientacion_4'),
+                        colindancia_4=cleaned_row.get('colindancia_4')
+                    )
+                    
+                    db.session.add(lote)
+                    successful_uploads += 1
+                
+                except Exception as e:
+                    # Log specific row errors
+                    error_details.append(f"Fila {row_num}: {str(e)} - Datos: {row}")
+                    failed_uploads += 1
+                    current_app.logger.error(f"Error en fila {row_num}: {str(e)} - Datos: {row}")
+                    db.session.rollback()
+            
+            # Commit changes if no failures
+            if failed_uploads == 0:
                 db.session.commit()
-                flash(f'Se han creado {lotes_created} lotes exitosamente.', 'success')
+                flash(f'{successful_uploads} lotes subidos exitosamente.', 'success')
+            else:
+                # Detailed error reporting
+                flash(f'Carga completada. {successful_uploads} lotes subidos exitosamente. {failed_uploads} lotes fallaron.', 'warning')
+                current_app.logger.error(f"Bulk upload errors: {error_details}")
             
-            return redirect(url_for('properties.lotes_index', paquete_id=paquete_id))
-            
+            return redirect(url_for('properties.lotes_index', paquete_id=paquete.id))
+        
         except Exception as e:
-            flash(f'Error al procesar el archivo: {str(e)}', 'error')
-            return redirect(url_for('properties.lotes_index', paquete_id=paquete_id))
+            db.session.rollback()
+            current_app.logger.error(f"Bulk upload error: {str(e)}", exc_info=True)
+            flash(f'Error al procesar el archivo: {str(e)}', 'danger')
     
-    return render_template('properties/lotes/bulk_upload.html', 
-                         form=form, 
-                         paquete=paquete)
+    return render_template('properties/lotes/bulk_upload.html', form=form, paquete=paquete)
 
 @bp.route('/api/lotes/<int:lote_id>/details', methods=['GET'])
-@login_required
 def get_lote_details(lote_id):
     """Get detailed information about a lot"""
     try:
         current_app.logger.info(f"Fetching details for lot {lote_id}")
-        lote = Lote.query.get_or_404(lote_id)
+        
+        if not current_user.is_authenticated:
+            current_app.logger.warning(f"Unauthenticated user tried to access lot details for lot {lote_id}")
+            return jsonify({'error': 'Authentication required'}), 401
+            
+        current_app.logger.info(f"User {current_user.id} requesting details for lot {lote_id}")
+        
+        # Try to get the lot and handle potential errors
+        try:
+            lote = Lote.query.get(lote_id)
+            if not lote:
+                current_app.logger.error(f"Lot {lote_id} not found")
+                return jsonify({'error': f'Lote {lote_id} no encontrado'}), 404
+        except Exception as e:
+            current_app.logger.error(f"Database error when fetching lot {lote_id}: {str(e)}")
+            return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
+            
+        current_app.logger.info(f"Found lot: {lote}")
         
         # Get current assignment if any
         current_assignment = None
-        if lote.estado_del_inmueble == 'Apartado':
-            current_assignment = (
-                LoteAsignacion.query
-                .filter_by(lote_id=lote_id, fecha_fin=None)
-                .first()
-            )
+        try:
+            if lote.estado_del_inmueble == 'Apartado':
+                current_app.logger.info(f"Lot {lote_id} is reserved, fetching assignment")
+                current_assignment = (
+                    LoteAsignacion.query
+                    .filter_by(lote_id=lote_id, fecha_fin=None)
+                    .first()
+                )
+                current_app.logger.info(f"Current assignment: {current_assignment}")
+        except Exception as e:
+            current_app.logger.error(f"Error fetching assignment for lot {lote_id}: {str(e)}")
+            # Don't fail completely if assignment fetch fails
+            pass
         
-        # Build response data
-        data = {
-            'id': lote.id,
-            'numero_lote': lote.lote,
-            'manzana': lote.manzana,
-            'superficie': lote.terreno,
-            'precio': float(lote.precio) if lote.precio else 0,
-            'estado': lote.estado_del_inmueble,
-            'tipo': lote.tipo_de_lote,
-            'prototipo': {
-                'nombre': lote.prototipo.nombre_prototipo,
-                'superficie': lote.prototipo.superficie_construccion
-            } if lote.prototipo else None,
-            'cliente': None
-        }
-        
-        # Add client information if assigned
-        if current_assignment and current_assignment.client:
-            client = current_assignment.client
-            data['cliente'] = {
-                'nombre_completo': client.nombre_completo,
-                'telefono': client.telefono,
-                'email': client.email
+        try:
+            # Build response data
+            data = {
+                'id': lote.id,
+                'numero_lote': lote.lote,
+                'manzana': lote.manzana,
+                'superficie': lote.terreno,
+                'precio': float(lote.precio) if lote.precio else 0,
+                'estado': lote.estado_del_inmueble,
+                'tipo': lote.tipo_de_lote,
+                'prototipo': None  # Initialize as None
             }
-        
-        current_app.logger.info(f"Successfully retrieved lot details: {data}")
-        response = jsonify(data)
-        response.headers['Content-Type'] = 'application/json'
-        return response
+            
+            # Add prototipo data if it exists
+            if lote.prototipo:
+                data['prototipo'] = {
+                    'nombre': lote.prototipo.nombre_prototipo,
+                    'superficie': lote.prototipo.superficie_construccion
+                }
+            
+            # Add client information if assigned
+            data['cliente'] = None  # Initialize as None
+            if current_assignment and current_assignment.client:
+                client = current_assignment.client
+                data['cliente'] = {
+                    'nombre_completo': client.nombre_completo,
+                    'telefono': client.telefono,
+                    'email': client.email
+                }
+            
+            current_app.logger.info(f"Successfully retrieved lot details: {data}")
+            return jsonify(data)
+            
+        except Exception as e:
+            current_app.logger.error(f"Error building response data for lot {lote_id}: {str(e)}")
+            return jsonify({'error': f'Error al procesar datos del lote: {str(e)}'}), 500
         
     except Exception as e:
-        current_app.logger.error(f"Error getting lot details: {str(e)}")
-        error_response = jsonify({'error': 'Error al obtener detalles del lote'})
-        error_response.headers['Content-Type'] = 'application/json'
-        return error_response, 500
+        current_app.logger.error(f"Unexpected error getting lot details for lot {lote_id}: {str(e)}")
+        current_app.logger.error(f"Exception traceback: {traceback.format_exc()}")
+        return jsonify({'error': f'Error inesperado: {str(e)}'}), 500
 
 @bp.route('/api/clients/assignable')
 @login_required
@@ -763,45 +870,326 @@ def release_lot(lote_id):
         db.session.rollback()
         return jsonify({'error': 'Error al liberar el lote'}), 500
 
+@bp.route('/properties/lotes/public/<int:lote_id>/details')
+def lote_details(lote_id):
+    """Get details for a specific lot"""
+    try:
+        current_app.logger.debug(f'Fetching details for lote {lote_id}')
+        lote = Lote.query.get_or_404(lote_id)
+        
+        # Ensure all required relationships are loaded
+        if not lote.paquete or not lote.paquete.fraccionamiento:
+            current_app.logger.error(f'Missing relationships for lote {lote_id}')
+            return jsonify({'error': 'Datos del lote incompletos'}), 500
+        
+        response_data = {
+            'id': lote.id,
+            'fraccionamiento': lote.paquete.fraccionamiento.nombre,
+            'paquete': lote.paquete.nombre,
+            'manzana': lote.manzana,
+            'lote': lote.lote,
+            'estado': lote.estado_del_inmueble,
+            'prototipo': lote.prototipo.nombre_prototipo if lote.prototipo else None,
+            'terreno': lote.terreno,
+            'precio': float(lote.precio) if lote.precio else 0,
+            'ultima_modificacion': lote.fecha_modificacion.isoformat() if lote.fecha_modificacion else None
+        }
+        
+        current_app.logger.debug(f'Sending response: {response_data}')
+        return jsonify(response_data)
+        
+    except Exception as e:
+        current_app.logger.error(f'Error fetching lote details: {str(e)}')
+        return jsonify({'error': 'Error al obtener detalles del lote'}), 500
+
 @bp.route('/lotes/public', methods=['GET'])
 def lotes_public():
+    """Public view of available lots"""
     try:
-        form = LoteFilterForm(request.args, meta={'csrf': False})
-        lotes = []
+        current_app.logger.info('Loading public lotes page')
+        form = LoteFilterForm(request.args)
+        lotes = []  # Initialize empty list
         
-        # If fraccionamiento_id is provided in AJAX request, return paquetes list
+        # Handle AJAX request for paquetes
         if request.args.get('fraccionamiento_id'):
-            fraccionamiento_id = int(request.args.get('fraccionamiento_id'))
-            paquetes = Paquete.query.filter_by(fraccionamiento_id=fraccionamiento_id).order_by('nombre').all()
-            return jsonify([(p.id, p.nombre) for p in paquetes])
-        
-        # Only build query if fraccionamiento is selected
-        if form.fraccionamiento.data:
-            # Update paquetes choices based on selected fraccionamiento
-            paquetes = Paquete.query.filter_by(fraccionamiento_id=form.fraccionamiento.data).order_by('nombre').all()
-            form.paquete.choices = [(0, 'Todos los paquetes')] + [(p.id, p.nombre) for p in paquetes]
-            
-            # Build query based on filters
-            query = Lote.query
-            paquete_ids = [p.id for p in paquetes]
-            query = query.filter(Lote.paquete_id.in_(paquete_ids))
-            
-            if form.paquete.data and form.paquete.data != 0:  # 0 means "All packages"
-                query = query.filter_by(paquete_id=form.paquete.data)
-            
-            if form.estado.data:
-                query = query.filter_by(estado_del_inmueble=form.estado.data)
-            
-            # Get lotes with their relationships
-            lotes = query.join(Paquete).join(Fraccionamiento).join(Prototipo).order_by(
-                Fraccionamiento.nombre,
-                Paquete.nombre,
-                Lote.manzana,
-                Lote.lote
-            ).all()
+            try:
+                fraccionamiento_id = int(request.args.get('fraccionamiento_id'))
+                current_app.logger.debug(f'AJAX request for paquetes of fraccionamiento {fraccionamiento_id}')
+                
+                paquetes = Paquete.query.filter_by(fraccionamiento_id=fraccionamiento_id).order_by('nombre').all()
+                current_app.logger.debug(f'Found {len(paquetes)} paquetes in database')
+                
+                paquete_list = [{'id': p.id, 'nombre': p.nombre, 'fraccionamiento_id': p.fraccionamiento_id} for p in paquetes]
+                current_app.logger.debug(f'Converted to JSON: {paquete_list}')
+                
+                response = {'paquetes': paquete_list}
+                current_app.logger.debug(f'Sending response: {response}')
+                return jsonify(response)
+            except ValueError:
+                current_app.logger.error('Invalid fraccionamiento_id provided')
+                return jsonify({'error': 'ID de fraccionamiento inválido'}), 400
+            except Exception as e:
+                current_app.logger.error(f'Error loading paquetes: {str(e)}')
+                return jsonify({'error': 'Error al cargar los paquetes'}), 500
+
+        # Always update paquete choices if fraccionamiento is selected
+        if form.fraccionamiento.data and form.fraccionamiento.data != 0:
+            try:
+                current_app.logger.debug(f'Updating paquete choices for fraccionamiento {form.fraccionamiento.data}')
+                # Store current paquete selection
+                current_paquete = form.paquete.data
+                
+                # Update choices
+                paquetes = Paquete.query.filter_by(fraccionamiento_id=form.fraccionamiento.data).order_by('nombre').all()
+                form.paquete.choices = [(0, 'Seleccione un paquete')] + [(p.id, p.nombre) for p in paquetes]
+                
+                # Restore paquete selection if it exists in new choices
+                if current_paquete and current_paquete != 0:
+                    paquete_ids = [p.id for p in paquetes]
+                    if current_paquete in paquete_ids:
+                        form.paquete.data = current_paquete
+            except Exception as e:
+                current_app.logger.error(f'Error loading paquetes: {str(e)}')
+                flash('Error al cargar los paquetes', 'error')
+
+        # Only query and show results if both fraccionamiento and paquete are selected
+        if (form.fraccionamiento.data and form.fraccionamiento.data != 0 and 
+            form.paquete.data and form.paquete.data != 0):
+            try:
+                current_app.logger.debug(f'Building query with selected filters')
+                
+                # Build base query
+                query = Lote.query.join(Paquete).join(Fraccionamiento).join(Prototipo)
+                
+                # Apply fraccionamiento and paquete filters
+                query = query.filter(
+                    Paquete.fraccionamiento_id == form.fraccionamiento.data,
+                    Paquete.id == form.paquete.data,
+                    Lote.paquete_id == Paquete.id
+                )
+                
+                # Apply estado filter independently if selected
+                if form.estado.data:
+                    current_app.logger.debug(f'Applying estado filter: {form.estado.data}')
+                    query = query.filter(Lote.estado_del_inmueble == form.estado.data)
+                
+                # Execute query with ordering
+                try:
+                    lotes = query.order_by(
+                        Fraccionamiento.nombre,
+                        Paquete.nombre,
+                        Lote.manzana,
+                        Lote.lote
+                    ).all()
+                    current_app.logger.debug(f'Found {len(lotes)} lotes matching criteria')
+                except Exception as e:
+                    current_app.logger.error(f'Error executing query: {str(e)}')
+                    flash('Error al obtener los lotes', 'error')
+                    return render_template('properties/lotes/public.html', form=form, lotes=[])
+                
+                return render_template('properties/lotes/public.html', form=form, lotes=lotes)
+                
+            except Exception as e:
+                current_app.logger.error(f'Error applying filters: {str(e)}')
+                flash('Error al aplicar los filtros', 'error')
+                return render_template('properties/lotes/public.html', form=form, lotes=[])
         
         return render_template('properties/lotes/public.html', form=form, lotes=lotes)
+        
     except Exception as e:
-        current_app.logger.error(f"Error in lotes_public: {str(e)}")
-        flash('Error al cargar los lotes. Por favor intente nuevamente.', 'error')
+        current_app.logger.error(f'Unexpected error in lotes_public: {str(e)}')
+        flash('Error inesperado. Por favor intente nuevamente.', 'error')
         return render_template('properties/lotes/public.html', form=form, lotes=[])
+
+@bp.route('/lotes/<int:lote_id>/details', methods=['GET'])
+@login_required
+def lote_details_ajax(lote_id):
+    """
+    Fetch details for a specific lot via AJAX
+    """
+    try:
+        current_app.logger.info(f"Attempting to fetch details for Lote ID: {lote_id}")
+        current_app.logger.info(f"Current user: {current_user.id}")
+
+        # Fetch the lot with its related information
+        lote = Lote.query.options(
+            joinedload(Lote.prototipo),
+            joinedload(Lote.asignacion).joinedload(LoteAsignacion.client)
+        ).get_or_404(lote_id)
+
+        # Debug logging
+        current_app.logger.info(f"Lote found: {lote}")
+        current_app.logger.info(f"Lote Manzana: {lote.manzana}")
+        current_app.logger.info(f"Lote Estado: {lote.estado_del_inmueble}")
+
+        # Prepare lot details
+        lot_details = {
+            'id': lote.id,
+            'manzana': lote.manzana,
+            'lote': lote.lote,
+            'terreno': float(lote.terreno) if lote.terreno is not None else None,
+            'precio': float(lote.precio) if lote.precio is not None else None,
+            'estado_del_inmueble': lote.estado_del_inmueble,
+            'tipo_de_lote': lote.tipo_de_lote,
+            'prototipo': {
+                'nombre_prototipo': lote.prototipo.nombre_prototipo if lote.prototipo else None,
+                'superficie_construccion': float(lote.prototipo.superficie_construccion) if lote.prototipo and lote.prototipo.superficie_construccion is not None else None
+            } if lote.prototipo else None,
+            'asignacion': {
+                'client': {
+                    'nombre_completo': getattr(lote.asignacion.client, 'nombre_completo', None) if lote.asignacion and lote.asignacion.client else None,
+                    'celular': getattr(lote.asignacion.client, 'celular', None) if lote.asignacion and lote.asignacion.client else None,
+                    'email': getattr(lote.asignacion.client, 'email', None) if lote.asignacion and lote.asignacion.client else None
+                } if lote.asignacion and lote.asignacion.client else None
+            } if lote.estado_del_inmueble == 'Apartado' else None
+        }
+
+        current_app.logger.info(f"Lot details prepared: {lot_details}")
+        return jsonify(lot_details)
+    except Exception as e:
+        # More detailed error logging
+        import traceback
+        current_app.logger.error(f"Error fetching lot details: {str(e)}")
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'error': f'No se pudieron cargar los detalles del lote: {str(e)}'}), 500
+
+@bp.route('/lotes/<int:lote_id>/history', methods=['GET'])
+@login_required
+def lote_history_ajax(lote_id):
+    """
+    Fetch history for a specific lot via AJAX
+    """
+    try:
+        # Fetch lot history
+        history_entries = LoteAsignacion.query.filter_by(lote_id=lote_id).order_by(LoteAsignacion.fecha_inicio.desc()).all()
+
+        # Prepare history details
+        history_details = []
+        for entry in history_entries:
+            history_details.append({
+                'fecha_inicio': entry.fecha_inicio.strftime('%Y-%m-%d %H:%M:%S') if entry.fecha_inicio else None,
+                'fecha_fin': entry.fecha_fin.strftime('%Y-%m-%d %H:%M:%S') if entry.fecha_fin else None,
+                'cliente_nombre': entry.client.nombre_completo if entry.client else 'N/A',
+                'estado': entry.estado,
+                'usuario_nombre': entry.usuario.nombre_completo if entry.usuario else 'N/A',
+                'motivo': entry.motivo
+            })
+
+        return jsonify(history_details)
+    except Exception as e:
+        current_app.logger.error(f"Error fetching lot history: {str(e)}")
+        return jsonify({'error': 'No se pudo cargar el historial del lote'}), 500
+
+@bp.route('/lotes/<int:lote_id>/change_status', methods=['POST'])
+@login_required
+def change_lote_status(lote_id):
+    """
+    Change lot status with role-based restrictions
+    """
+    # Check if it's an AJAX request
+    if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+        current_app.logger.warning(f"Non-AJAX request to change lot status for lote {lote_id}")
+        return jsonify({'error': 'Solicitud inválida'}), 400
+    
+    try:
+        # Log incoming request details for debugging
+        current_app.logger.info(f"Change status request received for lote_id: {lote_id}")
+        current_app.logger.info(f"Request method: {request.method}")
+        current_app.logger.info(f"Request content type: {request.content_type}")
+        
+        # Validate request
+        if not request.is_json:
+            current_app.logger.error('Request must be JSON')
+            return jsonify({'error': 'La solicitud debe ser JSON'}), 400
+        
+        # Get request data
+        data = request.get_json()
+        if not data:
+            current_app.logger.error('No JSON data received')
+            return jsonify({'error': 'No se recibieron datos'}), 400
+        
+        new_status = data.get('new_status')
+        reason = data.get('reason', '')
+        
+        # Validate new status
+        if not new_status:
+            return jsonify({'error': 'Estado requerido'}), 400
+        
+        if new_status not in Lote.ESTADOS_INMUEBLE:
+            return jsonify({'error': 'Estado inválido'}), 400
+        
+        # Fetch the lot with related information
+        lote = Lote.query.options(
+            joinedload(Lote.asignacion)
+        ).get_or_404(lote_id)
+        
+        # Current status
+        old_status = lote.estado_del_inmueble
+        
+        # Status change rules
+        if old_status == 'Libre' and new_status == 'Apartado':
+            # Any user can change from Libre to Apartado
+            pass
+        elif old_status == 'Apartado' and new_status == 'Libre':
+            # When changing to Libre, remove any existing assignment
+            if lote.asignacion:
+                # Log the assignment history before removing
+                assignment_history = LoteAsignacionHistorial(
+                    lote_id=lote.id,
+                    client_id=lote.asignacion.client_id,
+                    user_id=lote.asignacion.user_id,
+                    fecha_inicio=lote.asignacion.fecha_inicio,
+                    fecha_fin=datetime.utcnow(),
+                    estado=lote.asignacion.estado,
+                    motivo_cambio='Lote liberado',
+                    notas=reason
+                )
+                db.session.add(assignment_history)
+                
+                # Remove the current assignment
+                db.session.delete(lote.asignacion)
+        elif old_status == 'Apartado' and new_status == 'Titulado':
+            # Only GERENTE and ADMIN can change to Titulado
+            if current_user.role not in [UserRole.GERENTE.value, UserRole.ADMIN.value]:
+                return jsonify({'error': 'No tienes permiso para cambiar a Titulado'}), 403
+        elif old_status == 'Titulado' and (new_status == 'Libre' or new_status == 'Apartado'):
+            # Only GERENTE and ADMIN can change from Titulado
+            if current_user.role not in [UserRole.GERENTE.value, UserRole.ADMIN.value]:
+                return jsonify({'error': 'No tienes permiso para cambiar de Titulado'}), 403
+            
+            # Require a reason for changing from Titulado to Apartado
+            if new_status == 'Apartado' and not reason:
+                return jsonify({'error': 'Se requiere un motivo para cambiar de Titulado a Apartado'}), 400
+        else:
+            return jsonify({'error': 'Cambio de estado no permitido'}), 400
+        
+        # Log status change
+        status_change_log = LoteStatusChangeLog(
+            lote_id=lote.id,
+            user_id=current_user.id,
+            old_status=old_status,
+            new_status=new_status,
+            reason=reason
+        )
+        
+        # Update lot status
+        lote.estado_del_inmueble = new_status
+        
+        # Save changes
+        db.session.add(status_change_log)
+        db.session.commit()
+        
+        current_app.logger.info(f'Lot {lote_id} status changed from {old_status} to {new_status} by user {current_user.id}')
+        
+        return jsonify({
+            'message': 'Estado del lote actualizado',
+            'new_status': new_status,
+            'old_status': old_status
+        }), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error changing lot status: {str(e)}')
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'Error al cambiar el estado del lote: {str(e)}'}), 500

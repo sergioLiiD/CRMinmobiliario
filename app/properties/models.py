@@ -200,3 +200,21 @@ class LoteAsignacionHistorial(db.Model):
     lote = db.relationship('Lote', backref='historial_asignaciones')
     client = db.relationship('Client', backref='historial_lotes')
     user = db.relationship('User', backref='historial_asignaciones')
+
+class LoteStatusChangeLog(db.Model):
+    __tablename__ = 'lote_status_change_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    lote_id = db.Column(db.Integer, db.ForeignKey('lotes.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    old_status = db.Column(db.String(50), nullable=False)
+    new_status = db.Column(db.String(50), nullable=False)
+    reason = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    lote = db.relationship('Lote', backref='status_changes')
+    user = db.relationship('User', backref='lote_status_changes')
+    
+    def __repr__(self):
+        return f'<LoteStatusChangeLog {self.lote_id}: {self.old_status} -> {self.new_status}>'

@@ -1,7 +1,9 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, IntegerField, TextAreaField, MultipleFileField, SelectField, SubmitField
 from wtforms.validators import DataRequired, NumberRange, Optional
-from flask_wtf.file import FileAllowed, FileField
+from flask_wtf.file import FileAllowed, FileField, FileRequired
+from flask_sqlalchemy import SQLAlchemy
+from wtforms_sqlalchemy.fields import QuerySelectField
 from .models import Fraccionamiento, Prototipo
 
 class PrototipoForm(FlaskForm):
@@ -165,23 +167,33 @@ class LoteForm(FlaskForm):
         ]
 
 class LoteFilterForm(FlaskForm):
-    fraccionamiento = SelectField('Fraccionamiento', coerce=int, validators=[DataRequired()])
-    paquete = SelectField('Paquete', coerce=int, validators=[Optional()])
+    fraccionamiento = SelectField('Fraccionamiento', coerce=int)
+    paquete = SelectField('Paquete', coerce=int)
     estado = SelectField('Estado', choices=[
-        ('', 'Todos'),
-        ('Libre', 'Libre'),
-        ('Apartado', 'Apartado'),
-        ('Titulado', 'Titulado')
-    ], validators=[Optional()])
-    
+            ('', 'Todos'),
+            ('Libre', 'Libre'),
+            ('Apartado', 'Apartado'),
+            ('Titulado', 'Titulado')
+        ])
+
     def __init__(self, *args, **kwargs):
         super(LoteFilterForm, self).__init__(*args, **kwargs)
-        self.fraccionamiento.choices = [(f.id, f.nombre) for f in Fraccionamiento.query.order_by('nombre').all()]
-        self.paquete.choices = [(0, 'Todos los paquetes')]  # Default choice
+        # Initialize fraccionamiento choices
+        self.fraccionamiento.choices = [(0, 'Seleccione un fraccionamiento')] + [
+            (f.id, f.nombre) for f in Fraccionamiento.query.order_by('nombre').all()
+        ]
+        # Initialize paquete choices (will be updated via AJAX)
+        self.paquete.choices = [(0, 'Todos los paquetes')]
 
 class LoteBulkUploadForm(FlaskForm):
-    file = FileField('Archivo CSV', validators=[
-        DataRequired(),
-        FileAllowed(['csv'], 'Solo se permiten archivos CSV')
+    csv_file = FileField('Archivo CSV', validators=[
+        FileRequired(message='Por favor, seleccione un archivo CSV'),
+        FileAllowed(['csv'], message='Solo se permiten archivos CSV')
     ])
-    submit = SubmitField('Subir Lotes')
+    prototipo = QuerySelectField(
+        'Prototipo', 
+        query_factory=lambda: Prototipo.query.all(), 
+        get_label='nombre_prototipo',
+        validators=[DataRequired(message='Debe seleccionar un prototipo')]
+    )
+    submit = SubmitField('Cargar Lotes')

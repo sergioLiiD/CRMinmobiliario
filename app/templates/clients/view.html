@@ -55,283 +55,309 @@
         padding: 0.5em 1em;
         border-radius: 50px;
     }
+
+    .close-button-container {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 1000;
+    }
+    
+    .btn-close {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 0.5rem;
+        border-radius: 50%;
+    }
+    
+    .btn-close:hover {
+        background-color: rgba(0, 0, 0, 0.2);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header bg-white border-bottom-0 pb-0">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h4 mb-0">{{ client.nombre }} {{ client.apellido_paterno }} {{ client.apellido_materno }}</h2>
-            <div>
-                <span class="badge bg-{{ client.estatus|lower }} status-badge me-2">{{ client.estatus }}</span>
-                <a href="{{ url_for('clients.edit', id=client.id) }}" class="btn btn-primary">
-                    <i class="fas fa-edit"></i> Editar
-                </a>
-            </div>
-        </div>
-        
-        <ul class="nav nav-tabs client-tabs" id="clientTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <a class="nav-link active" id="personal-tab" data-bs-toggle="tab" href="#personal" role="tab">
-                    <i class="fas fa-user info-icon"></i>Datos Personales
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="empleo-tab" data-bs-toggle="tab" href="#empleo" role="tab">
-                    <i class="fas fa-briefcase info-icon"></i>Empleo
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="referencias-tab" data-bs-toggle="tab" href="#referencias" role="tab">
-                    <i class="fas fa-address-book info-icon"></i>Referencias
-                </a>
-            </li>
-            {% if client.estado_civil == 'Casado' %}
-            <li class="nav-item">
-                <a class="nav-link" id="conyuge-tab" data-bs-toggle="tab" href="#conyuge" role="tab">
-                    <i class="fas fa-heart info-icon"></i>Cónyuge
-                </a>
-            </li>
-            {% endif %}
-            <li class="nav-item">
-                <a class="nav-link" id="seguimiento-tab" data-bs-toggle="tab" href="#seguimiento" role="tab">
-                    <i class="fas fa-chart-line info-icon"></i>Seguimiento
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="documentos-tab" data-bs-toggle="tab" href="#documentos" role="tab">
-                    <i class="fas fa-file info-icon"></i>Documentos
-                </a>
-            </li>
-        </ul>
+<div class="container position-relative">
+    <div class="close-button-container">
+        <button onclick="window.close()" class="btn-close" aria-label="Close"></button>
     </div>
-
-    <div class="card-body">
-        <div class="tab-content" id="clientTabsContent">
-            <!-- Datos Personales -->
-            <div class="tab-pane fade show active" id="personal" role="tabpanel">
-                <dl class="row client-info">
-                    {% if current_user.has_role('ADMIN') or current_user.has_role('GERENTE') or current_user.has_role('LIDER DE EQUIPO') %}
-                    <dt class="col-sm-3">
-                        <i class="fas fa-user-shield info-icon"></i>Asignado a
-                    </dt>
-                    <dd class="col-sm-9">
-                        <div class="d-flex align-items-center">
-                            <span class="me-2">{{ client.assigned_user.nombre_completo }}</span>
-                            {% if current_user.can_assign_client(client.assigned_user) %}
-                            <button type="button" 
-                                    class="btn btn-sm btn-outline-primary" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#assignUserModal">
-                                <i class="fas fa-exchange-alt me-1"></i> Cambiar
-                            </button>
-                            {% endif %}
-                        </div>
-                    </dd>
-                    {% endif %}
-                    <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Nombre</dt>
-                    <dd class="col-sm-9">{{ client.nombre }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Apellido Paterno</dt>
-                    <dd class="col-sm-9">{{ client.apellido_paterno }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Apellido Materno</dt>
-                    <dd class="col-sm-9">{{ client.apellido_materno }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-phone info-icon"></i>Celular</dt>
-                    <dd class="col-sm-9">{{ client.celular or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-envelope info-icon"></i>Email</dt>
-                    <dd class="col-sm-9">{{ client.email or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-id-card info-icon"></i>RFC</dt>
-                    <dd class="col-sm-9">{{ client.rfc or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-id-card info-icon"></i>CURP</dt>
-                    <dd class="col-sm-9">{{ client.curp or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-calendar info-icon"></i>Fecha de Nacimiento</dt>
-                    <dd class="col-sm-9">{{ client.fecha_nacimiento.strftime('%d/%m/%Y') if client.fecha_nacimiento else 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-venus-mars info-icon"></i>Sexo</dt>
-                    <dd class="col-sm-9">{{ client.sexo or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-ring info-icon"></i>Estado Civil</dt>
-                    <dd class="col-sm-9">{{ client.estado_civil or 'No especificado' }}</dd>
-
-                    {% if client.estado_civil == 'Casado' %}
-                    <dt class="col-sm-3"><i class="fas fa-balance-scale info-icon"></i>Régimen Matrimonial</dt>
-                    <dd class="col-sm-9">{{ client.regimen_matrimonial or 'No especificado' }}</dd>
-                    {% endif %}
-
-                    <dt class="col-sm-3"><i class="fas fa-flag info-icon"></i>Nacionalidad</dt>
-                    <dd class="col-sm-9">{{ client.nacionalidad or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-map-marker-alt info-icon"></i>Dirección</dt>
-                    <dd class="col-sm-9">{{ client.direccion or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-map info-icon"></i>Colonia</dt>
-                    <dd class="col-sm-9">{{ client.colonia or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-city info-icon"></i>Estado</dt>
-                    <dd class="col-sm-9">{{ client.estado or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-building info-icon"></i>Municipio</dt>
-                    <dd class="col-sm-9">{{ client.municipio or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-mail-bulk info-icon"></i>Código Postal</dt>
-                    <dd class="col-sm-9">{{ client.codigo_postal or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-bullhorn info-icon"></i>¿Cómo se enteró de nosotros?</dt>
-                    <dd class="col-sm-9">{{ client.como_se_entero or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-tasks info-icon"></i>Estatus</dt>
-                    <dd class="col-sm-9">
-                        {% set status_colors = {
-                            'Prospecto': 'primary',
-                            'Calificado': 'info',
-                            'Cita': 'warning',
-                            'Proceso de Escritura': 'success',
-                            'Titulado': 'success',
-                            'Titulado Pagado': 'success'
-                        } %}
-                        <span class="badge bg-{{ status_colors[client.estatus] if client.estatus in status_colors else 'secondary' }}">
-                            {{ client.estatus or 'No especificado' }}
-                        </span>
-                    </dd>
-                </dl>
-            </div>
-
-            <div class="tab-pane fade" id="empleo" role="tabpanel">
-                <dl class="row client-info">
-                    <dt class="col-sm-3"><i class="fas fa-building info-icon"></i>Empresa</dt>
-                    <dd class="col-sm-9">{{ client.empresa or 'No especificada' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-briefcase info-icon"></i>Puesto</dt>
-                    <dd class="col-sm-9">{{ client.puesto or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-money-bill-wave info-icon"></i>Ingreso Mensual</dt>
-                    <dd class="col-sm-9">{{ client.ingreso_mensual or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-calendar-alt info-icon"></i>Antigüedad</dt>
-                    <dd class="col-sm-9">{{ client.antiguedad or 'No especificada' }}</dd>
-                </dl>
-            </div>
-
-            <div class="tab-pane fade" id="referencias" role="tabpanel">
-                <dl class="row client-info">
-                    <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Referencia 1</dt>
-                    <dd class="col-sm-9">{{ client.referencia1_nombre or 'No especificada' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-phone info-icon"></i>Teléfono</dt>
-                    <dd class="col-sm-9">{{ client.referencia1_telefono or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Referencia 2</dt>
-                    <dd class="col-sm-9">{{ client.referencia2_nombre or 'No especificada' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-phone info-icon"></i>Teléfono</dt>
-                    <dd class="col-sm-9">{{ client.referencia2_telefono or 'No especificado' }}</dd>
-                </dl>
-            </div>
-
-            {% if client.estado_civil == 'Casado' %}
-            <div class="tab-pane fade" id="conyuge" role="tabpanel">
-                <dl class="row client-info">
-                    <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Nombre</dt>
-                    <dd class="col-sm-9">{{ client.conyuge_nombre or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-id-card info-icon"></i>CURP</dt>
-                    <dd class="col-sm-9">{{ client.conyuge_curp or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-phone info-icon"></i>Teléfono</dt>
-                    <dd class="col-sm-9">{{ client.conyuge_telefono or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-building info-icon"></i>Empresa</dt>
-                    <dd class="col-sm-9">{{ client.conyuge_empresa or 'No especificada' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-money-bill-wave info-icon"></i>Ingreso Mensual</dt>
-                    <dd class="col-sm-9">{{ client.conyuge_ingreso_mensual or 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-calendar info-icon"></i>Fecha de Nacimiento</dt>
-                    <dd class="col-sm-9">{{ client.conyuge_fecha_nacimiento.strftime('%d/%m/%Y') if client.conyuge_fecha_nacimiento else 'No especificado' }}</dd>
-                </dl>
-            </div>
-            {% endif %}
-
-            <div class="tab-pane fade" id="seguimiento" role="tabpanel">
-                <dl class="row client-info">
-                    <dt class="col-sm-3"><i class="fas fa-calendar-check info-icon"></i>Fecha de Registro</dt>
-                    <dd class="col-sm-9">{{ client.fecha_registro.strftime('%d/%m/%Y %H:%M:%S') if client.fecha_registro else 'No especificado' }}</dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-tasks info-icon"></i>Estatus</dt>
-                    <dd class="col-sm-9">
-                        {% set status_colors = {
-                            'Prospecto': 'primary',
-                            'Calificado': 'info',
-                            'Cita': 'warning',
-                            'Proceso de Escritura': 'success',
-                            'Titulado': 'success',
-                            'Titulado Pagado': 'success'
-                        } %}
-                        <span class="badge bg-{{ status_colors[client.estatus] if client.estatus in status_colors else 'secondary' }}">
-                            {{ client.estatus or 'No especificado' }}
-                        </span>
-                    </dd>
-
-                    <dt class="col-sm-3"><i class="fas fa-comments info-icon"></i>Notas</dt>
-                    <dd class="col-sm-9">{{ client.notas or 'Sin notas' }}</dd>
-                </dl>
-            </div>
-
-            <div class="tab-pane fade" id="documentos" role="tabpanel">
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <form id="uploadForm" class="card p-3">
-                            <div class="mb-3">
-                                <label for="document_name" class="form-label">Nombre del Documento</label>
-                                <input type="text" class="form-control" id="document_name" name="document_name" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="file" class="form-label">Archivo</label>
-                                <input type="file" class="form-control" id="file" name="file" required>
-                                <div class="form-text">Formatos permitidos: PDF, PNG, JPG, JPEG, DOC, DOCX</div>
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-upload me-2"></i>Subir Documento
-                            </button>
-                        </form>
-                    </div>
+    
+    <div class="card">
+        <div class="card-header bg-white border-bottom-0 pb-0">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h4 mb-0">{{ client.nombre }} {{ client.apellido_paterno }} {{ client.apellido_materno }}</h2>
+                <div>
+                    <span class="badge bg-{{ client.estatus|lower }} status-badge me-2">{{ client.estatus }}</span>
+                    <a href="{{ url_for('clients.edit', id=client.id) }}" class="btn btn-primary">
+                        <i class="fas fa-edit"></i> Editar
+                    </a>
+                    <button onclick="closeWindow()" class="btn btn-secondary ms-2">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Archivo</th>
-                                <th>Fecha de Subida</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="documents-list">
-                            {% for document in client.documents %}
-                            <tr>
-                                <td>{{ document.name }}</td>
-                                <td>{{ document.filename }}</td>
-                                <td>{{ document.upload_date.strftime('%d/%m/%Y %H:%M:%S') }}</td>
-                                <td>
-                                    <a href="{{ url_for('clients.get_document', document_id=document.id) }}" class="btn btn-sm btn-primary" target="_blank">
-                                        <i class="fas fa-download"></i>
-                                    </a>
-                                    <button class="btn btn-sm btn-danger delete-document" data-document-id="{{ document.id }}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            </div>
+            
+            <ul class="nav nav-tabs client-tabs" id="clientTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active" id="personal-tab" data-bs-toggle="tab" href="#personal" role="tab">
+                        <i class="fas fa-user info-icon"></i>Datos Personales
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="empleo-tab" data-bs-toggle="tab" href="#empleo" role="tab">
+                        <i class="fas fa-briefcase info-icon"></i>Empleo
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="referencias-tab" data-bs-toggle="tab" href="#referencias" role="tab">
+                        <i class="fas fa-address-book info-icon"></i>Referencias
+                    </a>
+                </li>
+                {% if client.estado_civil == 'Casado' %}
+                <li class="nav-item">
+                    <a class="nav-link" id="conyuge-tab" data-bs-toggle="tab" href="#conyuge" role="tab">
+                        <i class="fas fa-heart info-icon"></i>Cónyuge
+                    </a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                    <a class="nav-link" id="seguimiento-tab" data-bs-toggle="tab" href="#seguimiento" role="tab">
+                        <i class="fas fa-chart-line info-icon"></i>Seguimiento
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="documentos-tab" data-bs-toggle="tab" href="#documentos" role="tab">
+                        <i class="fas fa-file info-icon"></i>Documentos
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body">
+            <div class="tab-content" id="clientTabsContent">
+                <!-- Datos Personales -->
+                <div class="tab-pane fade show active" id="personal" role="tabpanel">
+                    <dl class="row client-info">
+                        {% if current_user.has_role('ADMIN') or current_user.has_role('GERENTE') or current_user.has_role('LIDER DE EQUIPO') %}
+                        <dt class="col-sm-3">
+                            <i class="fas fa-user-shield info-icon"></i>Asignado a
+                        </dt>
+                        <dd class="col-sm-9">
+                            <div class="d-flex align-items-center">
+                                <span class="me-2">{{ client.assigned_user.nombre_completo }}</span>
+                                {% if current_user.can_assign_client(client.assigned_user) %}
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-primary" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#assignUserModal">
+                                    <i class="fas fa-exchange-alt me-1"></i> Cambiar
+                                </button>
+                                {% endif %}
+                            </div>
+                        </dd>
+                        {% endif %}
+                        <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Nombre</dt>
+                        <dd class="col-sm-9">{{ client.nombre }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Apellido Paterno</dt>
+                        <dd class="col-sm-9">{{ client.apellido_paterno }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Apellido Materno</dt>
+                        <dd class="col-sm-9">{{ client.apellido_materno }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-phone info-icon"></i>Celular</dt>
+                        <dd class="col-sm-9">{{ client.celular or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-envelope info-icon"></i>Email</dt>
+                        <dd class="col-sm-9">{{ client.email or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-id-card info-icon"></i>RFC</dt>
+                        <dd class="col-sm-9">{{ client.rfc or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-id-card info-icon"></i>CURP</dt>
+                        <dd class="col-sm-9">{{ client.curp or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-calendar info-icon"></i>Fecha de Nacimiento</dt>
+                        <dd class="col-sm-9">{{ client.fecha_nacimiento.strftime('%d/%m/%Y') if client.fecha_nacimiento else 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-venus-mars info-icon"></i>Sexo</dt>
+                        <dd class="col-sm-9">{{ client.sexo or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-ring info-icon"></i>Estado Civil</dt>
+                        <dd class="col-sm-9">{{ client.estado_civil or 'No especificado' }}</dd>
+
+                        {% if client.estado_civil == 'Casado' %}
+                        <dt class="col-sm-3"><i class="fas fa-balance-scale info-icon"></i>Régimen Matrimonial</dt>
+                        <dd class="col-sm-9">{{ client.regimen_matrimonial or 'No especificado' }}</dd>
+                        {% endif %}
+
+                        <dt class="col-sm-3"><i class="fas fa-flag info-icon"></i>Nacionalidad</dt>
+                        <dd class="col-sm-9">{{ client.nacionalidad or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-map-marker-alt info-icon"></i>Dirección</dt>
+                        <dd class="col-sm-9">{{ client.direccion or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-map info-icon"></i>Colonia</dt>
+                        <dd class="col-sm-9">{{ client.colonia or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-city info-icon"></i>Estado</dt>
+                        <dd class="col-sm-9">{{ client.estado or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-building info-icon"></i>Municipio</dt>
+                        <dd class="col-sm-9">{{ client.municipio or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-mail-bulk info-icon"></i>Código Postal</dt>
+                        <dd class="col-sm-9">{{ client.codigo_postal or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-bullhorn info-icon"></i>¿Cómo se enteró de nosotros?</dt>
+                        <dd class="col-sm-9">{{ client.como_se_entero or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-tasks info-icon"></i>Estatus</dt>
+                        <dd class="col-sm-9">
+                            {% set status_colors = {
+                                'Prospecto': 'primary',
+                                'Calificado': 'info',
+                                'Cita': 'warning',
+                                'Proceso de Escritura': 'success',
+                                'Titulado': 'success',
+                                'Titulado Pagado': 'success'
+                            } %}
+                            <span class="badge bg-{{ status_colors[client.estatus] if client.estatus in status_colors else 'secondary' }}">
+                                {{ client.estatus or 'No especificado' }}
+                            </span>
+                        </dd>
+                    </dl>
+                </div>
+
+                <div class="tab-pane fade" id="empleo" role="tabpanel">
+                    <dl class="row client-info">
+                        <dt class="col-sm-3"><i class="fas fa-building info-icon"></i>Empresa</dt>
+                        <dd class="col-sm-9">{{ client.empresa or 'No especificada' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-briefcase info-icon"></i>Puesto</dt>
+                        <dd class="col-sm-9">{{ client.puesto or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-money-bill-wave info-icon"></i>Ingreso Mensual</dt>
+                        <dd class="col-sm-9">{{ client.ingreso_mensual or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-calendar-alt info-icon"></i>Antigüedad</dt>
+                        <dd class="col-sm-9">{{ client.antiguedad or 'No especificada' }}</dd>
+                    </dl>
+                </div>
+
+                <div class="tab-pane fade" id="referencias" role="tabpanel">
+                    <dl class="row client-info">
+                        <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Referencia 1</dt>
+                        <dd class="col-sm-9">{{ client.referencia1_nombre or 'No especificada' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-phone info-icon"></i>Teléfono</dt>
+                        <dd class="col-sm-9">{{ client.referencia1_telefono or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Referencia 2</dt>
+                        <dd class="col-sm-9">{{ client.referencia2_nombre or 'No especificada' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-phone info-icon"></i>Teléfono</dt>
+                        <dd class="col-sm-9">{{ client.referencia2_telefono or 'No especificado' }}</dd>
+                    </dl>
+                </div>
+
+                {% if client.estado_civil == 'Casado' %}
+                <div class="tab-pane fade" id="conyuge" role="tabpanel">
+                    <dl class="row client-info">
+                        <dt class="col-sm-3"><i class="fas fa-user info-icon"></i>Nombre</dt>
+                        <dd class="col-sm-9">{{ client.conyuge_nombre or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-id-card info-icon"></i>CURP</dt>
+                        <dd class="col-sm-9">{{ client.conyuge_curp or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-phone info-icon"></i>Teléfono</dt>
+                        <dd class="col-sm-9">{{ client.conyuge_telefono or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-building info-icon"></i>Empresa</dt>
+                        <dd class="col-sm-9">{{ client.conyuge_empresa or 'No especificada' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-money-bill-wave info-icon"></i>Ingreso Mensual</dt>
+                        <dd class="col-sm-9">{{ client.conyuge_ingreso_mensual or 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-calendar info-icon"></i>Fecha de Nacimiento</dt>
+                        <dd class="col-sm-9">{{ client.conyuge_fecha_nacimiento.strftime('%d/%m/%Y') if client.conyuge_fecha_nacimiento else 'No especificado' }}</dd>
+                    </dl>
+                </div>
+                {% endif %}
+
+                <div class="tab-pane fade" id="seguimiento" role="tabpanel">
+                    <dl class="row client-info">
+                        <dt class="col-sm-3"><i class="fas fa-calendar-check info-icon"></i>Fecha de Registro</dt>
+                        <dd class="col-sm-9">{{ client.fecha_registro.strftime('%d/%m/%Y %H:%M:%S') if client.fecha_registro else 'No especificado' }}</dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-tasks info-icon"></i>Estatus</dt>
+                        <dd class="col-sm-9">
+                            {% set status_colors = {
+                                'Prospecto': 'primary',
+                                'Calificado': 'info',
+                                'Cita': 'warning',
+                                'Proceso de Escritura': 'success',
+                                'Titulado': 'success',
+                                'Titulado Pagado': 'success'
+                            } %}
+                            <span class="badge bg-{{ status_colors[client.estatus] if client.estatus in status_colors else 'secondary' }}">
+                                {{ client.estatus or 'No especificado' }}
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-3"><i class="fas fa-comments info-icon"></i>Notas</dt>
+                        <dd class="col-sm-9">{{ client.notas or 'Sin notas' }}</dd>
+                    </dl>
+                </div>
+
+                <div class="tab-pane fade" id="documentos" role="tabpanel">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <form id="uploadForm" class="card p-3">
+                                <div class="mb-3">
+                                    <label for="document_name" class="form-label">Nombre del Documento</label>
+                                    <input type="text" class="form-control" id="document_name" name="document_name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file" class="form-label">Archivo</label>
+                                    <input type="file" class="form-control" id="file" name="file" required>
+                                    <div class="form-text">Formatos permitidos: PDF, PNG, JPG, JPEG, DOC, DOCX</div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-upload me-2"></i>Subir Documento
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Archivo</th>
+                                    <th>Fecha de Subida</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="documents-list">
+                                {% for document in client.documents %}
+                                <tr>
+                                    <td>{{ document.name }}</td>
+                                    <td>{{ document.filename }}</td>
+                                    <td>{{ document.upload_date.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('clients.get_document', document_id=document.id) }}" class="btn btn-sm btn-primary" target="_blank">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-danger delete-document" data-document-id="{{ document.id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -373,6 +399,10 @@
 
 {% block scripts %}
 <script>
+    function closeWindow() {
+        window.close();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize tabs
         var triggerTabList = [].slice.call(document.querySelectorAll('.client-tabs a'))
