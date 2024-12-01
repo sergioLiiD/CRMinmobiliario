@@ -77,9 +77,6 @@
 
 {% block content %}
 <div class="container position-relative">
-    <div class="close-button-container">
-        <button onclick="window.close()" class="btn-close" aria-label="Close"></button>
-    </div>
     
     <div class="card">
         <div class="card-header bg-white border-bottom-0 pb-0">
@@ -90,7 +87,7 @@
                     <a href="{{ url_for('clients.edit', id=client.id) }}" class="btn btn-primary">
                         <i class="fas fa-edit"></i> Editar
                     </a>
-                    <button onclick="closeWindow()" class="btn btn-secondary ms-2">
+                    <button onclick="closeCurrentWindow()" class="btn btn-secondary ms-2">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -399,9 +396,42 @@
 
 {% block scripts %}
 <script>
-    function closeWindow() {
-        window.close();
+    function closeCurrentWindow() {
+        // Attempt to redirect parent window to client list
+        try {
+            // First, try to redirect the parent window
+            if (window.parent && window.parent !== window) {
+                window.parent.location.href = "{{ url_for('clients.index') }}";
+            }
+            
+            // If no parent, try opener
+            else if (window.opener && !window.opener.closed) {
+                window.opener.location.href = "{{ url_for('clients.index') }}";
+            }
+            
+            // Last resort: use postMessage to communicate with the opener
+            else {
+                window.postMessage({
+                    type: 'redirectToClientList', 
+                    url: "{{ url_for('clients.index') }}"
+                }, '*');
+            }
+            
+            // Close the current window
+            window.close();
+        } catch (e) {
+            console.error('Error closing window:', e);
+            // Fallback: direct navigation
+            window.location.href = "{{ url_for('clients.index') }}";
+        }
     }
+
+    // Listen for postMessage events
+    window.addEventListener('message', function(event) {
+        if (event.data.type === 'redirectToClientList') {
+            window.location.href = event.data.url;
+        }
+    }, false);
 
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize tabs
