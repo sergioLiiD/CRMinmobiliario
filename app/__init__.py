@@ -56,15 +56,15 @@ def create_app(config_class=Config):
     # Register blueprints
     from .main import bp as main_bp
     app.register_blueprint(main_bp)
-
+    
     from .auth import bp as auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')
-
-    from .clients import bp as clients_bp
-    app.register_blueprint(clients_bp, url_prefix='/clients')
-
+    
     from .properties import bp as properties_bp
     app.register_blueprint(properties_bp, url_prefix='/properties')
+    
+    from .clients import bp as clients_bp
+    app.register_blueprint(clients_bp, url_prefix='/clients')
 
     # Register CLI commands
     from .cli import create_admin_command

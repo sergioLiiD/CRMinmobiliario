@@ -2,6 +2,7 @@ import os
 from flask import render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
+from sqlalchemy import or_  # <--- Added missing import
 from werkzeug.utils import secure_filename
 from . import bp
 from .forms import PrototipoForm, FraccionamientoForm, PaqueteForm, LoteForm, LoteBulkUploadForm, LoteFilterForm
@@ -737,7 +738,8 @@ def get_assignable_clients():
         return jsonify([{
             'id': client.id,
             'nombre_completo': client.nombre_completo,
-            'celular': client.celular or 'Sin teléfono'
+            'celular': client.celular or 'Sin teléfono',
+            'email': client.email or ''
         } for client in clients])
     except Exception as e:
         current_app.logger.error(f"Error in get_assignable_clients: {str(e)}")
@@ -764,10 +766,20 @@ def assign_lot(lote_id):
         current_app.logger.info(f"Found lot: {lote.id}, current status: {lote.estado_del_inmueble}")
 
         # Verify lot is available
-        if lote.estado_del_inmueble != 'Libre':
+        if lote.estado_del_inmueble not in ['Libre']:
             current_app.logger.warning(f"Lot {lote_id} is not available. Current status: {lote.estado_del_inmueble}")
-            return jsonify({'error': 'El lote no está disponible'}), 400
-
+            return jsonify({'error': 'El lote no está disponible para asignación'}), 400
+        
+        # Check for existing assignment
+        existing_assignment = LoteAsignacion.query.filter_by(lote_id=lote_id, estado='Apartado').first()
+        if existing_assignment:
+            # If the lot is Libre, remove the existing assignment
+            if lote.estado_del_inmueble == 'Libre':
+                db.session.delete(existing_assignment)
+            else:
+                current_app.logger.warning(f"Lot {lote_id} already assigned to a client")
+                return jsonify({'error': 'El lote ya está asignado'}), 400
+            
         # Get the client and verify they exist
         client = Client.query.get_or_404(client_id)
         current_app.logger.info(f"Found client: {client.id}")
@@ -781,7 +793,8 @@ def assign_lot(lote_id):
                 lote_id=lote_id,
                 client_id=client_id,
                 user_id=current_user.id,
-                notas=notas
+                notas=notas,
+                estado='Apartado'
             )
             current_app.logger.info(f"Created assignment object for lot {lote_id} and client {client_id}")
 
@@ -904,101 +917,44 @@ def lote_details(lote_id):
 
 @bp.route('/lotes/public', methods=['GET'])
 def lotes_public():
-    """Public view of available lots"""
     try:
         current_app.logger.info('Loading public lotes page')
         form = LoteFilterForm(request.args)
-        lotes = []  # Initialize empty list
+        lotes = []
         
-        # Handle AJAX request for paquetes
         if request.args.get('fraccionamiento_id'):
-            try:
-                fraccionamiento_id = int(request.args.get('fraccionamiento_id'))
-                current_app.logger.debug(f'AJAX request for paquetes of fraccionamiento {fraccionamiento_id}')
-                
-                paquetes = Paquete.query.filter_by(fraccionamiento_id=fraccionamiento_id).order_by('nombre').all()
-                current_app.logger.debug(f'Found {len(paquetes)} paquetes in database')
-                
-                paquete_list = [{'id': p.id, 'nombre': p.nombre, 'fraccionamiento_id': p.fraccionamiento_id} for p in paquetes]
-                current_app.logger.debug(f'Converted to JSON: {paquete_list}')
-                
-                response = {'paquetes': paquete_list}
-                current_app.logger.debug(f'Sending response: {response}')
-                return jsonify(response)
-            except ValueError:
-                current_app.logger.error('Invalid fraccionamiento_id provided')
-                return jsonify({'error': 'ID de fraccionamiento inválido'}), 400
-            except Exception as e:
-                current_app.logger.error(f'Error loading paquetes: {str(e)}')
-                return jsonify({'error': 'Error al cargar los paquetes'}), 500
+            fraccionamiento_id = int(request.args.get('fraccionamiento_id'))
+            paquetes = Paquete.query.filter_by(fraccionamiento_id=fraccionamiento_id).order_by('nombre').all()
+            paquete_list = [{'id': p.id, 'nombre': p.nombre, 'fraccionamiento_id': p.fraccionamiento_id} for p in paquetes]
+            return jsonify({'paquetes': paquete_list})
 
-        # Always update paquete choices if fraccionamiento is selected
         if form.fraccionamiento.data and form.fraccionamiento.data != 0:
-            try:
-                current_app.logger.debug(f'Updating paquete choices for fraccionamiento {form.fraccionamiento.data}')
-                # Store current paquete selection
-                current_paquete = form.paquete.data
-                
-                # Update choices
-                paquetes = Paquete.query.filter_by(fraccionamiento_id=form.fraccionamiento.data).order_by('nombre').all()
-                form.paquete.choices = [(0, 'Seleccione un paquete')] + [(p.id, p.nombre) for p in paquetes]
-                
-                # Restore paquete selection if it exists in new choices
-                if current_paquete and current_paquete != 0:
-                    paquete_ids = [p.id for p in paquetes]
-                    if current_paquete in paquete_ids:
-                        form.paquete.data = current_paquete
-            except Exception as e:
-                current_app.logger.error(f'Error loading paquetes: {str(e)}')
-                flash('Error al cargar los paquetes', 'error')
-
-        # Only query and show results if both fraccionamiento and paquete are selected
-        if (form.fraccionamiento.data and form.fraccionamiento.data != 0 and 
-            form.paquete.data and form.paquete.data != 0):
-            try:
-                current_app.logger.debug(f'Building query with selected filters')
-                
-                # Build base query
+            paquetes = Paquete.query.filter_by(fraccionamiento_id=form.fraccionamiento.data).order_by('nombre').all()
+            form.paquete.choices = [(0, 'Seleccione un paquete')] + [(p.id, p.nombre) for p in paquetes]
+            
+            if form.paquete.data and form.paquete.data != 0:
                 query = Lote.query.join(Paquete).join(Fraccionamiento).join(Prototipo)
-                
-                # Apply fraccionamiento and paquete filters
                 query = query.filter(
                     Paquete.fraccionamiento_id == form.fraccionamiento.data,
                     Paquete.id == form.paquete.data,
                     Lote.paquete_id == Paquete.id
                 )
                 
-                # Apply estado filter independently if selected
                 if form.estado.data:
-                    current_app.logger.debug(f'Applying estado filter: {form.estado.data}')
                     query = query.filter(Lote.estado_del_inmueble == form.estado.data)
                 
-                # Execute query with ordering
-                try:
-                    lotes = query.order_by(
-                        Fraccionamiento.nombre,
-                        Paquete.nombre,
-                        Lote.manzana,
-                        Lote.lote
-                    ).all()
-                    current_app.logger.debug(f'Found {len(lotes)} lotes matching criteria')
-                except Exception as e:
-                    current_app.logger.error(f'Error executing query: {str(e)}')
-                    flash('Error al obtener los lotes', 'error')
-                    return render_template('properties/lotes/public.html', form=form, lotes=[])
-                
-                return render_template('properties/lotes/public.html', form=form, lotes=lotes)
-                
-            except Exception as e:
-                current_app.logger.error(f'Error applying filters: {str(e)}')
-                flash('Error al aplicar los filtros', 'error')
-                return render_template('properties/lotes/public.html', form=form, lotes=[])
+                lotes = query.order_by(
+                    Fraccionamiento.nombre,
+                    Paquete.nombre,
+                    Lote.manzana,
+                    Lote.lote
+                ).all()
         
         return render_template('properties/lotes/public.html', form=form, lotes=lotes)
         
     except Exception as e:
-        current_app.logger.error(f'Unexpected error in lotes_public: {str(e)}')
-        flash('Error inesperado. Por favor intente nuevamente.', 'error')
+        current_app.logger.error(f'Error in lotes_public: {str(e)}')
+        flash('Error al cargar los lotes', 'error')
         return render_template('properties/lotes/public.html', form=form, lotes=[])
 
 @bp.route('/lotes/<int:lote_id>/details', methods=['GET'])
@@ -1040,8 +996,8 @@ def lote_details_ajax(lote_id):
                     'nombre_completo': getattr(lote.asignacion.client, 'nombre_completo', None) if lote.asignacion and lote.asignacion.client else None,
                     'celular': getattr(lote.asignacion.client, 'celular', None) if lote.asignacion and lote.asignacion.client else None,
                     'email': getattr(lote.asignacion.client, 'email', None) if lote.asignacion and lote.asignacion.client else None
-                } if lote.asignacion and lote.asignacion.client else None
-            } if lote.estado_del_inmueble == 'Apartado' else None
+                } if lote.estado_del_inmueble == 'Apartado' else None
+            } if lote.asignacion else None
         }
 
         current_app.logger.info(f"Lot details prepared: {lot_details}")
@@ -1193,3 +1149,162 @@ def change_lote_status(lote_id):
         import traceback
         current_app.logger.error(traceback.format_exc())
         return jsonify({'error': f'Error al cambiar el estado del lote: {str(e)}'}), 500
+
+@bp.route('/clients/search', methods=['GET'])
+@login_required
+def search_clients():
+    """Search clients for assignment"""
+    try:
+        # Comprehensive logging
+        current_app.logger.info(f"Client search request received")
+        current_app.logger.info(f"Request method: {request.method}")
+        current_app.logger.info(f"Request args: {request.args}")
+        current_app.logger.info(f"Request headers: {dict(request.headers)}")
+        current_app.logger.info(f"Current user: {current_user.id if current_user else 'No user'}")
+
+        # Get query parameter
+        query = request.args.get('q', '')
+        current_app.logger.info(f"Search query: {query}")
+        
+        # Validate query length
+        if len(query) < 2:
+            current_app.logger.warning("Search query too short")
+            return jsonify([])
+
+        # Prepare search pattern
+        search = f"%{query}%"
+        current_app.logger.info(f"Search pattern: {search}")
+        
+        # Perform database query
+        try:
+            # Log total number of clients for context
+            total_clients = Client.query.count()
+            current_app.logger.info(f"Total clients in database: {total_clients}")
+
+            # Perform search across multiple fields
+            from sqlalchemy import func
+            clients = Client.query.filter(
+                or_(
+                    func.lower(Client.nombre).like(func.lower(search)),
+                    func.lower(Client.email).like(func.lower(search)),
+                    func.lower(Client.celular).like(func.lower(search))
+                )
+            ).distinct(Client.id).group_by(Client.id).limit(10).all()
+        except Exception as db_error:
+            current_app.logger.error(f"Database query error: {str(db_error)}")
+            current_app.logger.error(f"Database query error details: {traceback.format_exc()}")
+            return jsonify({'error': str(db_error)}), 500
+
+        # Log found clients
+        current_app.logger.info(f"Found {len(clients)} clients")
+
+        # Log search details
+        current_app.logger.info(f"Search query: {search}")
+        current_app.logger.info(f"Found clients: {len(clients)}")
+        for client in clients:
+            current_app.logger.info(f"Client: {client.id}, Name: {client.nombre}, Email: {client.email}, Phone: {client.celular}")
+
+        # Format client data
+        client_list = [{
+            'id': c.id,
+            'nombre_completo': f"{c.nombre} {c.apellido_paterno or ''} {c.apellido_materno or ''}".strip(),
+            'email': c.email or '',
+            'telefono': c.celular
+        } for c in clients]
+
+        # Log formatted client list
+        current_app.logger.info(f"Returning {len(client_list)} formatted clients")
+
+        return jsonify(client_list)
+
+    except Exception as e:
+        # Log any unexpected errors
+        current_app.logger.error(f'Unexpected error in client search: {str(e)}')
+        current_app.logger.error(f'Error details: {traceback.format_exc()}')
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/lotes/<int:lote_id>/assign-client', methods=['POST'])
+@login_required
+def assign_client_to_lot(lote_id):
+    """Assign a client to a lot"""
+    try:
+        # Log incoming request details
+        current_app.logger.info(f"Assign client to lot request received")
+        current_app.logger.info(f"Lote ID: {lote_id}")
+        current_app.logger.info(f"Request method: {request.method}")
+        current_app.logger.info(f"Request data: {request.get_json()}")
+        current_app.logger.info(f"Current user: {current_user.id if current_user else 'No user'}")
+
+        # Get lot and validate it exists
+        lote = Lote.query.get_or_404(lote_id)
+        
+        # Check if lot is available for assignment
+        if lote.estado_del_inmueble not in ['Libre']:
+            current_app.logger.warning(f"Lot {lote_id} not available. Current status: {lote.estado_del_inmueble}")
+            return jsonify({'error': 'El lote no está disponible para asignación'}), 400
+        
+        # Check for existing assignment
+        existing_assignment = LoteAsignacion.query.filter_by(lote_id=lote_id, estado='Apartado').first()
+        if existing_assignment:
+            # If the lot is Libre, remove the existing assignment
+            if lote.estado_del_inmueble == 'Libre':
+                db.session.delete(existing_assignment)
+            else:
+                current_app.logger.warning(f"Lot {lote_id} already assigned to a client")
+                return jsonify({'error': 'El lote ya está asignado'}), 400
+            
+        # Get client data from request
+        data = request.get_json()
+        if not data:
+            current_app.logger.error("No JSON data received")
+            return jsonify({'error': 'No se recibieron datos'}), 400
+
+        client_id = data.get('client_id')
+        notes = data.get('notes', '')
+        
+        if not client_id:
+            current_app.logger.error("No client ID provided")
+            return jsonify({'error': 'Se requiere ID del cliente'}), 400
+            
+        # Validate client exists
+        client = Client.query.get(client_id)
+        if not client:
+            current_app.logger.error(f"Client not found. Client ID: {client_id}")
+            return jsonify({'error': 'Cliente no encontrado'}), 404
+        
+        # Create assignment record
+        assignment = LoteAsignacion(
+            lote_id=lote_id,
+            client_id=client_id,
+            user_id=current_user.id,
+            notas=notes,
+            estado='Apartado'
+        )
+        
+        # Update lot status
+        lote.estado_del_inmueble = 'Apartado'
+        lote.cliente_id = client_id
+        
+        # Save changes
+        try:
+            db.session.add(assignment)
+            db.session.commit()
+            
+            current_app.logger.info(f"Successfully assigned lot {lote_id} to client {client_id}")
+            return jsonify({
+                'message': 'Cliente asignado exitosamente',
+                'lote_id': lote_id,
+                'client_id': client_id
+            }), 200
+        
+        except Exception as db_error:
+            db.session.rollback()
+            current_app.logger.error(f"Database error assigning client to lot: {str(db_error)}")
+            current_app.logger.error(traceback.format_exc())
+            return jsonify({'error': 'Error al guardar la asignación'}), 500
+    
+    except Exception as e:
+        # Catch any unexpected errors
+        current_app.logger.error(f'Unexpected error assigning client to lot: {str(e)}')
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'Error inesperado: {str(e)}'}), 500

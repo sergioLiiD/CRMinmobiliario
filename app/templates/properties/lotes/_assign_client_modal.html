@@ -1,0 +1,54 @@
+<!-- Client Assignment Modal -->
+<div class="modal fade" id="assignClientModal" tabindex="-1" aria-labelledby="assignClientModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="assignClientModalLabel">Asignar Cliente al Lote</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignClientForm">
+                    <input type="hidden" id="assignLoteId" name="lote_id">
+                    
+                    <!-- Client Search Section -->
+                    <div class="mb-3">
+                        <label for="clientSearch" class="form-label">Buscar Cliente</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="clientSearch" 
+                                   placeholder="Nombre, email o teléfono del cliente">
+                            <button class="btn btn-outline-secondary" type="button" id="searchClientBtn">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Client Results Section -->
+                    <div id="clientSearchResults" class="list-group mb-3" style="max-height: 200px; overflow-y: auto;">
+                        <!-- Results will be populated dynamically -->
+                    </div>
+
+                    <!-- Selected Client Info -->
+                    <div id="selectedClientInfo" class="card d-none mb-3">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">Cliente Seleccionado</h6>
+                            <input type="hidden" id="selectedClientId" name="client_id">
+                            <p class="card-text" id="selectedClientDetails"></p>
+                        </div>
+                    </div>
+
+                    <!-- Assignment Notes -->
+                    <div class="mb-3">
+                        <label for="assignmentNotes" class="form-label">Notas de Asignación</label>
+                        <textarea class="form-control" id="assignmentNotes" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmAssignmentBtn">
+                    <i class="fas fa-user-plus"></i> Asignar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

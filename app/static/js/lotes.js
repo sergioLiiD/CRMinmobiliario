@@ -17,6 +17,8 @@ class LotesManager {
         this.initializeState();
         this.initializeLotDetailsListeners();
         this.initializeLotStatusChangeListeners();
+        this.initializeClientAssignmentListeners();
+        this.initializeStatusChangeModal();
         
         // Update state from URL parameters if they exist
         const urlParams = new URLSearchParams(window.location.search);
@@ -78,6 +80,9 @@ class LotesManager {
         if (releaseSubmitBtn) {
             releaseSubmitBtn.addEventListener('click', () => this.submitRelease());
         }
+        
+        this.initializeLotStatusChangeListeners();
+        this.initializeClientAssignmentListeners();
     }
 
     /**
@@ -633,6 +638,11 @@ class LotesManager {
                             
                             // Show success message
                             this.showToast('Estado del lote actualizado', 'success');
+
+                            // Reload page after a short delay
+                            setTimeout(() => {
+                                location.reload();
+                            }, 300);
                         })
                         .catch(error => {
                             console.error('Error details:', error);
@@ -656,9 +666,326 @@ class LotesManager {
                             this.showToast(errorMessage, 'danger');
                         });
                     });
+
+                    // Add event listener to modal to reload page when closed
+                    const modal = document.getElementById('lotStatusChangeModal');
+                    modal.addEventListener('hidden.bs.modal', () => {
+                        location.reload();
+                    });
                 }
             });
         }
+    }
+
+    initializeClientAssignmentListeners() {
+        console.log('Initializing client assignment listeners');
+        
+        // Assign client button listeners for both index and public pages
+        const assignClientButtons = document.querySelectorAll('.assign-client-btn');
+        assignClientButtons.forEach(button => {
+            button.addEventListener('click', (e) => this.prepareClientAssignment(e.currentTarget.getAttribute('data-lote-id')));
+        });
+
+        // Client search button listener
+        const searchClientBtn = document.getElementById('searchClientBtn');
+        if (searchClientBtn) {
+            searchClientBtn.addEventListener('click', () => this.searchClients());
+        }
+
+        // Client search input listener for debounce
+        const clientSearchInput = document.getElementById('clientSearch');
+        if (clientSearchInput) {
+            let searchTimeout;
+            clientSearchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => this.searchClients(), 300);
+            });
+        }
+
+        // Confirm assignment button listener
+        const confirmAssignmentBtn = document.getElementById('confirmAssignmentBtn');
+        if (confirmAssignmentBtn) {
+            confirmAssignmentBtn.addEventListener('click', () => this.submitClientAssignment());
+        }
+    }
+
+    async searchClients() {
+        const clientSearchInput = document.getElementById('clientSearch');
+        const clientSearchResults = document.getElementById('clientSearchResults');
+        const searchTerm = clientSearchInput.value.trim();
+
+        console.group('Client Search Debug');
+        console.log('Search Term:', searchTerm);
+        console.log('CSRF Token:', this.csrfToken);
+
+        // Clear previous results
+        clientSearchResults.innerHTML = '';
+
+        // Validate search term
+        if (searchTerm.length < 2) {
+            console.warn('Search term too short');
+            clientSearchResults.innerHTML = '<div class="list-group-item">Ingrese al menos 2 caracteres</div>';
+            console.groupEnd();
+            return;
+        }
+
+        try {
+            const response = await fetch(`/properties/clients/search?q=${encodeURIComponent(searchTerm)}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.csrfToken,
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'  // Ensure cookies are sent
+            });
+
+            console.log('Fetch Response:', {
+                status: response.status,
+                statusText: response.statusText
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Search error response:', errorText);
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const clients = await response.json();
+            console.log('Clients Received:', clients);
+
+            // Validate response
+            if (!Array.isArray(clients)) {
+                console.error('Invalid response format:', clients);
+                clientSearchResults.innerHTML = '<div class="list-group-item text-danger">Error en el formato de respuesta</div>';
+                console.groupEnd();
+                return;
+            }
+
+            if (clients.length === 0) {
+                console.warn('No clients found');
+                clientSearchResults.innerHTML = '<div class="list-group-item">No se encontraron clientes</div>';
+                console.groupEnd();
+                return;
+            }
+
+            // Populate results
+            clients.forEach(client => {
+                const clientItem = document.createElement('div');
+                clientItem.classList.add('list-group-item', 'list-group-item-action');
+                clientItem.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">${client.nombre_completo}</h5>
+                    </div>
+                    <p class="mb-1">
+                        <small>
+                            ${client.email ? `Email: ${client.email}<br>` : ''}
+                            Teléfono: ${client.telefono}
+                        </small>
+                    </p>
+                `;
+                clientItem.addEventListener('click', () => this.selectClient(client));
+                clientSearchResults.appendChild(clientItem);
+            });
+
+            console.log('Search completed successfully');
+            console.groupEnd();
+        } catch (error) {
+            console.error('Comprehensive Error:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+            
+            clientSearchResults.innerHTML = `<div class="list-group-item text-danger">Error: ${error.message}</div>`;
+            console.groupEnd();
+        }
+    }
+
+    selectClient(client) {
+        const selectedClientInfo = document.getElementById('selectedClientInfo');
+        const selectedClientDetails = document.getElementById('selectedClientDetails');
+        const selectedClientId = document.getElementById('selectedClientId');
+
+        // Update selected client details
+        selectedClientDetails.innerHTML = `
+            <strong>Nombre:</strong> ${client.nombre_completo}<br>
+            ${client.email ? `<strong>Email:</strong> ${client.email}<br>` : ''}
+            <strong>Teléfono:</strong> ${client.telefono}
+        `;
+
+        // Set client ID
+        selectedClientId.value = client.id;
+
+        // Show selected client info
+        selectedClientInfo.classList.remove('d-none');
+
+        // Clear search results
+        const clientSearchResults = document.getElementById('clientSearchResults');
+        clientSearchResults.innerHTML = '';
+    }
+
+    async submitClientAssignment() {
+        const assignLoteIdInput = document.getElementById('assignLoteId');
+        const selectedClientId = document.getElementById('selectedClientId');
+        const assignmentNotes = document.getElementById('assignmentNotes');
+
+        // Validate inputs
+        if (!assignLoteIdInput.value || !selectedClientId.value) {
+            this.showAlert('danger', 'Por favor seleccione un cliente');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/properties/lotes/${assignLoteIdInput.value}/assign-client`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.csrfToken
+                },
+                body: JSON.stringify({
+                    client_id: selectedClientId.value,
+                    notes: assignmentNotes.value || ''
+                })
+            });
+
+            // Check if response is ok
+            if (!response.ok) {
+                // Try to parse error message from response
+                let errorMessage = 'Error al asignar cliente';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorMessage;
+                } catch {
+                    // If parsing fails, use default error or status text
+                    errorMessage = `Error ${response.status}: ${response.statusText}`;
+                }
+                
+                // Log the full error for debugging
+                console.error('Assignment error:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    errorMessage: errorMessage
+                });
+
+                // Show error to user
+                this.showAlert('danger', errorMessage);
+                return;
+            }
+
+            // Parse successful response
+            const data = await response.json();
+            
+            // Show success message
+            this.showAlert('success', data.message || 'Cliente asignado exitosamente');
+
+            // Close the modal
+            const assignClientModal = bootstrap.Modal.getInstance(document.getElementById('assignClientModal'));
+            if (assignClientModal) {
+                assignClientModal.hide();
+            }
+
+            // Optional: Refresh the page or update UI
+            location.reload();
+
+        } catch (error) {
+            // Catch any network or parsing errors
+            console.error('Comprehensive assignment error:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+            
+            this.showAlert('danger', 'Error de red o procesamiento. Intente nuevamente.');
+        }
+    }
+    
+    prepareClientAssignment(loteId) {
+        console.log('Preparing client assignment for lote:', loteId);
+        
+        // Reset modal state
+        const assignLoteIdInput = document.getElementById('assignLoteId');
+        const clientSearchInput = document.getElementById('clientSearch');
+        const clientSearchResults = document.getElementById('clientSearchResults');
+        const selectedClientInfo = document.getElementById('selectedClientInfo');
+        const selectedClientDetails = document.getElementById('selectedClientDetails');
+        const selectedClientId = document.getElementById('selectedClientId');
+        const assignmentNotes = document.getElementById('assignmentNotes');
+
+        // Set lote ID
+        assignLoteIdInput.value = loteId;
+
+        // Clear previous results
+        clientSearchInput.value = '';
+        clientSearchResults.innerHTML = '';
+        selectedClientInfo.classList.add('d-none');
+        selectedClientDetails.innerHTML = '';
+        selectedClientId.value = '';
+        assignmentNotes.value = '';
+
+        // Show the modal
+        const assignClientModal = new bootstrap.Modal(document.getElementById('assignClientModal'));
+        assignClientModal.show();
+    }
+
+    initializeStatusChangeModal() {
+        const statusChangeModal = document.getElementById('lotStatusChangeModal');
+        if (statusChangeModal) {
+            // Add multiple event listeners for different modal events
+            statusChangeModal.addEventListener('hidden.bs.modal', (event) => {
+                console.log('Modal hidden event triggered');
+                location.reload();
+            });
+
+            statusChangeModal.addEventListener('hide.bs.modal', (event) => {
+                console.log('Modal hide event triggered');
+            });
+
+            statusChangeModal.addEventListener('hidePrevented.bs.modal', (event) => {
+                console.log('Modal hide prevented event triggered');
+            });
+
+            // Fallback method
+            const closeButtons = statusChangeModal.querySelectorAll('[data-bs-dismiss="modal"]');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    console.log('Close button clicked');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 300);
+                });
+            });
+        } else {
+            console.error('Status change modal not found');
+        }
+    }
+
+    showAlert(type, message) {
+        // Create an alert element
+        const alertContainer = document.getElementById('alertContainer') || 
+            document.createElement('div');
+        
+        if (!alertContainer.id) {
+            alertContainer.id = 'alertContainer';
+            alertContainer.classList.add('position-fixed', 'top-0', 'end-0', 'p-3');
+            alertContainer.style.zIndex = '1050';
+            document.body.appendChild(alertContainer);
+        }
+
+        const alertElement = document.createElement('div');
+        alertElement.classList.add('alert', `alert-${type}`, 'alert-dismissible', 'fade', 'show');
+        alertElement.setAttribute('role', 'alert');
+        alertElement.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        // Add to container and remove after 5 seconds
+        alertContainer.appendChild(alertElement);
+        setTimeout(() => {
+            alertElement.classList.remove('show');
+            setTimeout(() => alertElement.remove(), 150);
+        }, 5000);
     }
 
     getValidStatusOptions(currentStatus) {

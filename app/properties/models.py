@@ -174,14 +174,14 @@ class LoteAsignacion(db.Model):
     client = db.relationship('Client', backref='lotes_asignados')
     user = db.relationship('User', backref='asignaciones_realizadas')
     
-    def __init__(self, lote_id, client_id, user_id, notas=None, fecha_inicio=None):
+    def __init__(self, lote_id, client_id, user_id, notas=None, fecha_inicio=None, estado=None):
         self.lote_id = lote_id
         self.client_id = client_id
         self.user_id = user_id
         self.notas = notas
         self.fecha_inicio = fecha_inicio or datetime.utcnow()
         self.fecha_asignacion = self.fecha_inicio  # Keep old column in sync
-        self.estado = 'Apartado'
+        self.estado = estado or 'Apartado'
 
 class LoteAsignacionHistorial(db.Model):
     __tablename__ = 'lote_asignaciones_historial'
