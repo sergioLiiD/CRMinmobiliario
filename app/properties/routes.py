@@ -1,10 +1,10 @@
 import os
-from flask import render_template, redirect, url_for, flash, request, current_app, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_  # <--- Added missing import
 from werkzeug.utils import secure_filename
-from . import bp
+from . import bp  # Use the blueprint from __init__.py
 from .forms import PrototipoForm, FraccionamientoForm, PaqueteForm, LoteForm, LoteBulkUploadForm, LoteFilterForm
 from .models import Prototipo, PrototipoImagen, Fraccionamiento, Paquete, Lote, LoteAsignacion, LoteAsignacionHistorial, LoteStatusChangeLog
 from app.clients.models import Client
@@ -712,7 +712,7 @@ def get_lote_details(lote_id):
                 client = current_assignment.client
                 data['cliente'] = {
                     'nombre_completo': client.nombre_completo,
-                    'telefono': client.telefono,
+                    'celular': client.celular,
                     'email': client.email
                 }
             
@@ -883,15 +883,24 @@ def release_lot(lote_id):
         db.session.rollback()
         return jsonify({'error': 'Error al liberar el lote'}), 500
 
-@bp.route('/properties/lotes/public/<int:lote_id>/details')
+@bp.route('/properties/lotes/public/<int:lote_id>/details', methods=['GET'])
 def lote_details(lote_id):
     """Get details for a specific lot"""
     try:
         current_app.logger.debug(f'Fetching details for lote {lote_id}')
+        
+        # Add more detailed logging
+        current_app.logger.info(f'Attempting to query Lote with ID: {lote_id}')
+        
         lote = Lote.query.get_or_404(lote_id)
         
+        # Log each relationship check
+        current_app.logger.info(f'Lote found: {lote}')
+        current_app.logger.info(f'Paquete: {lote.paquete}')
+        current_app.logger.info(f'Prototipo: {lote.prototipo}')
+        
         # Ensure all required relationships are loaded
-        if not lote.paquete or not lote.paquete.fraccionamiento:
+        if not lote.paquete or not lote.prototipo:
             current_app.logger.error(f'Missing relationships for lote {lote_id}')
             return jsonify({'error': 'Datos del lote incompletos'}), 500
         
@@ -905,15 +914,35 @@ def lote_details(lote_id):
             'prototipo': lote.prototipo.nombre_prototipo if lote.prototipo else None,
             'terreno': lote.terreno,
             'precio': float(lote.precio) if lote.precio else 0,
-            'ultima_modificacion': lote.fecha_modificacion.isoformat() if lote.fecha_modificacion else None
+            'ultima_modificacion': lote.fecha_modificacion.isoformat() if lote.fecha_modificacion else None,
+            # New fields for address
+            'calle': lote.calle or 'N/A',
+            'numero_exterior': lote.numero_exterior or 'N/A',
+            'numero_interior': lote.numero_interior or 'N/A',
+            # Client assignment details
+            'asignacion': {
+                'client': {
+                    'nombre_completo': f"{lote.asignacion.client.nombre} {lote.asignacion.client.apellido_paterno} {lote.asignacion.client.apellido_materno or ''}".strip() if lote.asignacion and lote.asignacion.client else None,
+                    'nombre': lote.asignacion.client.nombre if lote.asignacion and lote.asignacion.client else None,
+                    'apellido_paterno': lote.asignacion.client.apellido_paterno if lote.asignacion and lote.asignacion.client else None,
+                    'apellido_materno': lote.asignacion.client.apellido_materno if lote.asignacion and lote.asignacion.client else None,
+                    'email': lote.asignacion.client.email if lote.asignacion and lote.asignacion.client else None,
+                    'celular': lote.asignacion.client.celular if lote.asignacion and lote.asignacion.client else None,
+                } if lote.asignacion and lote.asignacion.client else None,
+                'estado': lote.asignacion.estado if lote.asignacion else None,
+                'fecha_asignacion': lote.asignacion.fecha_asignacion.isoformat() if lote.asignacion and lote.asignacion.fecha_asignacion else None
+            } if lote.asignacion else None
         }
-        
-        current_app.logger.debug(f'Sending response: {response_data}')
+
+        current_app.logger.debug(f"Sending response: {response_data}")
         return jsonify(response_data)
         
     except Exception as e:
-        current_app.logger.error(f'Error fetching lote details: {str(e)}')
-        return jsonify({'error': 'Error al obtener detalles del lote'}), 500
+        # More detailed error logging
+        import traceback
+        current_app.logger.error(f'Detailed error fetching lote details: {str(e)}')
+        current_app.logger.error(f'Traceback: {traceback.format_exc()}')
+        return jsonify({'error': f'Error al obtener detalles del lote: {str(e)}'}), 500
 
 @bp.route('/lotes/public', methods=['GET'])
 def lotes_public():
@@ -997,7 +1026,11 @@ def lote_details_ajax(lote_id):
                     'celular': getattr(lote.asignacion.client, 'celular', None) if lote.asignacion and lote.asignacion.client else None,
                     'email': getattr(lote.asignacion.client, 'email', None) if lote.asignacion and lote.asignacion.client else None
                 } if lote.estado_del_inmueble == 'Apartado' else None
-            } if lote.asignacion else None
+            } if lote.asignacion else None,
+            # New fields for address
+            'calle': lote.calle or 'N/A',
+            'numero_exterior': lote.numero_exterior or 'N/A',
+            'numero_interior': lote.numero_interior or 'N/A',
         }
 
         current_app.logger.info(f"Lot details prepared: {lot_details}")
@@ -1042,20 +1075,30 @@ def change_lote_status(lote_id):
     """
     Change lot status with role-based restrictions
     """
+    # Extensive logging for debugging
+    print(f"Received request to change status for lote {lote_id}")
+    print(f"Request method: {request.method}")
+    print(f"Request headers: {dict(request.headers)}")
+    print(f"Request content type: {request.content_type}")
+    print(f"Request data: {request.get_data(as_text=True)}")
+    
+    # Log to Flask application logger
+    current_app.logger.info(f"Attempting to change status for lote {lote_id}")
+    current_app.logger.info(f"Full request headers: {dict(request.headers)}")
+    current_app.logger.info(f"Request method: {request.method}")
+    current_app.logger.info(f"Request content type: {request.content_type}")
+    current_app.logger.info(f"Request data: {request.get_data(as_text=True)}")
+    
     # Check if it's an AJAX request
     if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
         current_app.logger.warning(f"Non-AJAX request to change lot status for lote {lote_id}")
         return jsonify({'error': 'Solicitud inválida'}), 400
     
     try:
-        # Log incoming request details for debugging
-        current_app.logger.info(f"Change status request received for lote_id: {lote_id}")
-        current_app.logger.info(f"Request method: {request.method}")
-        current_app.logger.info(f"Request content type: {request.content_type}")
-        
         # Validate request
         if not request.is_json:
             current_app.logger.error('Request must be JSON')
+            current_app.logger.error(f'Request content: {request.get_data(as_text=True)}')
             return jsonify({'error': 'La solicitud debe ser JSON'}), 400
         
         # Get request data
@@ -1063,6 +1106,8 @@ def change_lote_status(lote_id):
         if not data:
             current_app.logger.error('No JSON data received')
             return jsonify({'error': 'No se recibieron datos'}), 400
+        
+        current_app.logger.info(f"Parsed JSON data: {data}")
         
         new_status = data.get('new_status')
         reason = data.get('reason', '')
@@ -1132,23 +1177,30 @@ def change_lote_status(lote_id):
         lote.estado_del_inmueble = new_status
         
         # Save changes
-        db.session.add(status_change_log)
-        db.session.commit()
+        try:
+            db.session.add(status_change_log)
+            db.session.commit()
+            
+            current_app.logger.info(f'Lot {lote_id} status changed from {old_status} to {new_status} by user {current_user.id}')
+            
+            return jsonify({
+                'message': 'Estado del lote actualizado',
+                'new_status': new_status,
+                'old_status': old_status
+            }), 200
         
-        current_app.logger.info(f'Lot {lote_id} status changed from {old_status} to {new_status} by user {current_user.id}')
-        
-        return jsonify({
-            'message': 'Estado del lote actualizado',
-            'new_status': new_status,
-            'old_status': old_status
-        }), 200
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Error changing lot status: {str(e)}')
+            import traceback
+            current_app.logger.error(traceback.format_exc())
+            return jsonify({'error': f'Error al cambiar el estado del lote: {str(e)}'}), 500
     
     except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f'Error changing lot status: {str(e)}')
-        import traceback
+        # Catch any unexpected errors
+        current_app.logger.error(f'Unexpected error changing lot status: {str(e)}')
         current_app.logger.error(traceback.format_exc())
-        return jsonify({'error': f'Error al cambiar el estado del lote: {str(e)}'}), 500
+        return jsonify({'error': f'Error inesperado: {str(e)}'}), 500
 
 @bp.route('/clients/search', methods=['GET'])
 @login_required
@@ -1170,7 +1222,7 @@ def search_clients():
         if len(query) < 2:
             current_app.logger.warning("Search query too short")
             return jsonify([])
-
+        
         # Prepare search pattern
         search = f"%{query}%"
         current_app.logger.info(f"Search pattern: {search}")
@@ -1209,7 +1261,7 @@ def search_clients():
             'id': c.id,
             'nombre_completo': f"{c.nombre} {c.apellido_paterno or ''} {c.apellido_materno or ''}".strip(),
             'email': c.email or '',
-            'telefono': c.celular
+            'celular': c.celular
         } for c in clients]
 
         # Log formatted client list
@@ -1308,3 +1360,27 @@ def assign_client_to_lot(lote_id):
         current_app.logger.error(f'Unexpected error assigning client to lot: {str(e)}')
         current_app.logger.error(traceback.format_exc())
         return jsonify({'error': f'Error inesperado: {str(e)}'}), 500
+
+@bp.route('/lotes/<int:lote_id>/unlink_client', methods=['POST'])
+@login_required
+def unlink_client(lote_id):
+    """Unlink client from a lot without changing lot status"""
+    lote = Lote.query.get_or_404(lote_id)
+    
+    # Check if lot has an assignment
+    if not lote.asignacion:
+        return jsonify({'error': 'No hay cliente asignado a este lote'}), 400
+    
+    try:
+        # Remove the assignment
+        db.session.delete(lote.asignacion)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Cliente desvinculado exitosamente',
+            'lote_id': lote.id
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Error al desvincular cliente'}), 500

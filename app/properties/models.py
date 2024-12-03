@@ -28,7 +28,7 @@ class Prototipo(db.Model):
     
     # Relationships
     imagenes = db.relationship('PrototipoImagen', back_populates='prototipo', cascade='all, delete-orphan')
-    lotes = db.relationship('Lote', backref='prototipo', lazy=True)
+    lotes = db.relationship('Lote', back_populates='prototipo', lazy=True)
 
     def __repr__(self):
         return f'<Prototipo {self.nombre_prototipo}>'
@@ -45,7 +45,7 @@ class Fraccionamiento(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    paquetes = db.relationship('Paquete', backref='fraccionamiento', lazy=True)
+    paquetes = db.relationship('Paquete', back_populates='fraccionamiento', lazy=True)
 
 class Paquete(db.Model):
     __tablename__ = 'paquetes'
@@ -57,7 +57,8 @@ class Paquete(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    lotes = db.relationship('Lote', backref='paquete', lazy=True)
+    fraccionamiento = db.relationship('Fraccionamiento', back_populates='paquetes', lazy=True)
+    lotes = db.relationship('Lote', back_populates='paquete', lazy=True)
 
 class Lote(db.Model):
     __tablename__ = 'lotes'
@@ -66,6 +67,15 @@ class Lote(db.Model):
     paquete_id = db.Column(db.Integer, db.ForeignKey('paquetes.id'), nullable=False)
     prototipo_id = db.Column(db.Integer, db.ForeignKey('prototipos.id'), nullable=False)
     
+    # Relationships
+    paquete = db.relationship('Paquete', 
+                               back_populates='lotes', 
+                               foreign_keys=[paquete_id])
+
+    prototipo = db.relationship('Prototipo', 
+                                 back_populates='lotes', 
+                                 foreign_keys=[prototipo_id])
+
     # Location details
     calle = db.Column(db.String(100), nullable=False)
     numero_exterior = db.Column(db.Integer, nullable=False)
@@ -77,6 +87,7 @@ class Lote(db.Model):
     tipo_de_lote = db.Column(db.String(50), nullable=False)
     estado_del_inmueble = db.Column(db.String(50), nullable=False, default='Libre')
     precio = db.Column(db.Float, nullable=False)
+    fecha_modificacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Orientation measurements
     orientacion_1 = db.Column(db.String(50), nullable=True, default=None)
