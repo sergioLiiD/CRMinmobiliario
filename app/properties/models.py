@@ -76,6 +76,11 @@ class Lote(db.Model):
                                  back_populates='lotes', 
                                  foreign_keys=[prototipo_id])
 
+    map_locations = db.relationship('MapLocation', 
+                                     back_populates='lot', 
+                                     cascade='all, delete-orphan', 
+                                     lazy='dynamic')
+
     # Location details
     calle = db.Column(db.String(100), nullable=False)
     numero_exterior = db.Column(db.Integer, nullable=False)

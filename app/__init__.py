@@ -53,7 +53,7 @@ def create_app(config_class=Config):
     from .clients.models import Client, Document
     from .properties.models import Prototipo, PrototipoImagen
 
-    # Register blueprints
+    # Import and register blueprints
     from .main import bp as main_bp
     app.register_blueprint(main_bp)
     
@@ -65,6 +65,9 @@ def create_app(config_class=Config):
     
     from .clients import bp as clients_bp
     app.register_blueprint(clients_bp, url_prefix='/clients')
+    
+    from .paquete_map.routes import map_bp
+    app.register_blueprint(map_bp)
 
     # Register CLI commands
     from .cli import create_admin_command

@@ -96,8 +96,15 @@
                             <a class="nav-link" href="{{ url_for('properties.lotes_public') }}">Lotes Disponibles</a>
                         </li>
                         {% if current_user.has_role('ADMIN') %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('auth.admin_users') }}">Usuarios</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Admin
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('auth.admin_users') }}">Usuarios</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('map.admin_map_upload') }}">Subir Mapa</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('map.admin_map_lots') }}">Ubicar Lotes en Mapa</a></li>
+                            </ul>
                         </li>
                         {% endif %}
                         <li class="nav-item">

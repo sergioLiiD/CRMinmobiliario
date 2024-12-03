@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Upload Map Image</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="row">
+        <div class="col-md-6">
+            <form method="POST" enctype="multipart/form-data">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group mb-3">
+                    {{ form.map_file.label(class="form-label") }}
+                    {{ form.map_file(class="form-control") }}
+                    {% if form.map_file.errors %}
+                        <div class="text-danger">
+                            {% for error in form.map_file.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group mb-3">
+                    {{ form.is_active.label(class="form-label") }}
+                    {{ form.is_active(class="form-select") }}
+                    {% if form.is_active.errors %}
+                        <div class="text-danger">
+                            {% for error in form.is_active.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Upload Map</button>
+            </form>
+        </div>
+        
+        <div class="col-md-6">
+            <h3>Existing Maps</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Filename</th>
+                        <th>Upload Date</th>
+                        <th>Active</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for map_image in existing_maps %}
+                    <tr>
+                        <td>{{ map_image.filename }}</td>
+                        <td>{{ map_image.upload_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>
+                            {% if map_image.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

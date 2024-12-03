@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Admin Map Lots</h1>
+    
+    {% if active_map %}
+        <div class="row">
+            <div class="col-md-8">
+                <div id="map-container" class="position-relative">
+                    <img 
+                        id="active-map-image" 
+                        src="{{ url_for('static', filename='uploads/maps/' + active_map.filename) }}" 
+                        class="img-fluid" 
+                        alt="Active Map"
+                        style="max-width: 100%; height: auto; position: relative; z-index: 1;"
+                    >
+                    <div 
+                        id="lot-markers" 
+                        class="position-absolute top-0 start-0 w-100 h-100" 
+                        style="z-index: 2; pointer-events: none;"
+                    ></div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        Place Lot on Map
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" id="map-location-form">
+                            {{ form.hidden_tag() }}
+                            
+                            <input type="hidden" name="map_image_id" value="{{ active_map.id }}">
+                            <input type="hidden" id="x-coordinate" name="x_coordinate">
+                            <input type="hidden" id="y-coordinate" name="y_coordinate">
+                            
+                            <div class="mb-3">
+                                {{ form.fraccionamiento.label(class="form-label") }}
+                                {{ form.fraccionamiento(class="form-select", id="fraccionamiento-select") }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.paquete.label(class="form-label") }}
+                                {{ form.paquete(class="form-select", id="paquete-select", disabled=true) }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.status.label(class="form-label") }}
+                                {{ form.status(class="form-select", id="status-select") }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.lot_id.label(class="form-label") }}
+                                {{ form.lot_id(class="form-select", id="lot-select", disabled=true) }}
+                            </div>
+                            
+                            {{ form.submit(class="btn btn-primary") }}
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        Existing Lot Locations
+                    </div>
+                    <ul id="existing-lots-list" class="list-group list-group-flush">
+                        {% for location in existing_locations %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center"
+                            data-lot-id="{{ location.lot_id }}"
+                            data-x-coordinate="{{ location.x_coordinate }}"
+                            data-y-coordinate="{{ location.y_coordinate }}"
+                            data-status="{{ location.status }}"
+                            data-toggle="modal" data-target="#lotDetailsModal"
+                        >
+                            {{ location.lot.manzana }} - {{ location.lot.lote }}
+                            <span class="badge bg-{{ 'success' if location.status == 'LIBRE' else 'warning' if location.status == 'APARTADO' else 'primary' }}">
+                                {{ location.status }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-warning">
+            No active map available. Please upload a map first.
+        </div>
+    {% endif %}
+</div>
+
+<!-- Lot Details Modal -->
+<div class="modal fade" id="lotDetailsModal" tabindex="-1" aria-labelledby="lotDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="lotDetailsModalLabel">Lot Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Basic Information</h6>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Lot ID</th>
+                                <td id="lotModalId">-</td>
+                            </tr>
+                            <tr>
+                                <th>Manzana</th>
+                                <td id="lotModalManzana">-</td>
+                            </tr>
+                            <tr>
+                                <th>Lote</th>
+                                <td id="lotModalLote">-</td>
+                            </tr>
+                            <tr>
+                                <th>Fraccionamiento</th>
+                                <td id="lotModalFraccionamiento">-</td>
+                            </tr>
+                            <tr>
+                                <th>Paquete</th>
+                                <td id="lotModalPaquete">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Status Information</h6>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Original Status</th>
+                                <td id="lotModalOriginalStatus">-</td>
+                            </tr>
+                            <tr>
+                                <th>Normalized Status</th>
+                                <td id="lotModalNormalizedStatus">-</td>
+                            </tr>
+                            <tr>
+                                <th>Price</th>
+                                <td id="lotModalPrice">-</td>
+                            </tr>
+                            <tr>
+                                <th>Surface Area</th>
+                                <td id="lotModalSurface">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Map Location Details</h6>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>X Coordinate</th>
+                                <td id="lotModalXCoordinate">-</td>
+                            </tr>
+                            <tr>
+                                <th>Y Coordinate</th>
+                                <td id="lotModalYCoordinate">-</td>
+                            </tr>
+                            <tr>
+                                <th>Map Location Status</th>
+                                <td id="lotModalMapLocationStatus">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="remove-lot-from-map">Remove from Map</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/map_lots.js') }}"></script>
+{% endblock %}
